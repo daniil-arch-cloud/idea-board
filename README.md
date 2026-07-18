@@ -34,7 +34,8 @@ Idea Board — локальное desktop-приложение для визуа
 - Electron Forge
 - LocalStorage
 
-Структура проекта
+## Структура проекта
+
 idea-board/
 ├── assets/              # иконка и статические ресурсы
 ├── index.html           # основной интерфейс приложения
