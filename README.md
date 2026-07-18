@@ -37,17 +37,18 @@ Idea Board — локальное desktop-приложение для визуа
 ## Структура проекта
 
 idea-board/
-├── assets/              # иконка и статические ресурсы
 
-├── index.html           # основной интерфейс приложения
+assets/              # иконка и статические ресурсы
 
-├── main.js              # Electron main process
+index.html           # основной интерфейс приложения
 
-├── package.json         # настройки проекта и npm-команды
+main.js              # Electron main process
 
-├── package-lock.json    # зафиксированные версии зависимостей
+package.json         # настройки проекта и npm-команды
 
-├── forge.config.js      # настройки сборки Electron Forge
+package-lock.json    # зафиксированные версии зависимостей
+
+forge.config.js      # настройки сборки Electron Forge
 
 
 ## Установка и запуск
