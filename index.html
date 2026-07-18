@@ -1,0 +1,6263 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+
+  <head>
+
+    <meta charset="UTF-8">
+
+      <title>
+            Idea Board
+      </title>
+
+      <style>
+        .help-overlay {
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 100;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .help-overlay.hidden {
+            display: none;
+        }
+
+        .help-window {
+            width: min(820px, calc(100vw - 40px));
+            height: min(760px, calc(100vh - 40px));
+            background: #f8f1e8;
+            border: 2px solid rgba(43, 42, 41, 0.25);
+            border-radius: 18px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+            color: rgb(43, 42, 41);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .help-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid rgba(43, 42, 41, 0.18);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #dbd5bf;
+        }
+
+        .help-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        #closeHelpBtn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 10px;
+            background: #333;
+            color: white;
+            cursor: pointer;
+            font-size: 22px;
+            line-height: 36px;
+        }
+
+        #closeHelpBtn:hover {
+            background: #8b0000;
+        }
+
+        .help-content {
+            padding: 20px 24px 28px 24px;
+            overflow-y: auto;
+            font-size: 15px;
+            line-height: 1.45;
+        }
+
+        .help-content h3 {
+            margin-top: 22px;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .help-content p {
+            margin: 6px 0;
+        }
+
+        .hotkeys-grid {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 8px 14px;
+            margin-top: 12px;
+            padding: 14px;
+            background: rgba(173, 218, 206, 0.45);
+            border-radius: 12px;
+        }
+
+        :root {
+            --app-bg: #17151f;
+            --app-bg-soft: #201d2b;
+            --panel-bg: rgba(34, 30, 45, 0.78);
+            --panel-border: rgba(255, 255, 255, 0.12);
+            --card-bg: #f7ecd8;
+            --card-bg-2: #fff8eb;
+            --text-main: #29242f;
+            --text-light: #f6eef8;
+            --text-muted: rgba(246, 238, 248, 0.64);
+            --accent: #d96fae;
+            --accent-strong: #ff8ccf;
+            --accent-dark: #8b3f6f;
+            --blue-accent: #87d7ff;
+            --danger: #ff6b86;
+            --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.22);
+            --shadow-card: 0 12px 30px rgba(0, 0, 0, 0.18);
+            --radius-xl: 18px;
+            --radius-md: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--app-bg);
+            font-family: Inter, Arial, Helvetica, sans-serif;
+            color: var(--text-main);
+        }
+
+        #board {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+
+            background-color: var(--app-bg);
+            background-image:
+                radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.13) 1px, transparent 0),
+                radial-gradient(circle at 20% 10%, rgba(217, 111, 174, 0.2), transparent 28%),
+                radial-gradient(circle at 80% 90%, rgba(135, 215, 255, 0.14), transparent 30%);
+            background-size:
+                28px 28px,
+                100% 100%,
+                100% 100%;
+        }
+
+        #workspace {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 0;
+            height: 0;
+            transform: translate(0px, 0px) scale(1);
+            transform-origin: 0 0;
+            overflow: visible;
+            z-index: 2;
+        }
+
+        /* Кнопки открытия панелей */
+
+        #togglePanelBtn,
+        #toggleBoardsPanelBtn {
+            position: fixed;
+            top: 14px;
+            z-index: 50;
+            width: 44px;
+            height: 44px;
+
+            background: rgba(34, 30, 45, 0.86);
+            color: var(--text-light);
+            border: 1px solid var(--panel-border);
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 20px;
+
+            backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+            transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+        }
+
+        #togglePanelBtn {
+            left: 14px;
+        }
+
+        #toggleBoardsPanelBtn {
+            right: 14px;
+        }
+
+        #togglePanelBtn:hover,
+        #toggleBoardsPanelBtn:hover {
+            background: rgba(217, 111, 174, 0.28);
+            border-color: rgba(255, 140, 207, 0.45);
+            transform: translateY(-1px);
+        }
+
+        /* Панели */
+
+        #sidePanel,
+        #boardsPanel {
+            position: fixed;
+            top: 0;
+            z-index: 40;
+            height: 100vh;
+
+            background: var(--panel-bg);
+            border-color: var(--panel-border);
+            padding: 74px 14px 16px 14px;
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(20px);
+        }
+
+        #sidePanel {
+            left: 0;
+            width: 250px;
+            border-right: 1px solid var(--panel-border);
+            transform: translateX(-280px);
+        }
+
+        #boardsPanel {
+            right: 0;
+            width: 280px;
+            border-left: 1px solid var(--panel-border);
+            transform: translateX(310px);
+        }
+
+        #sidePanel.open,
+        #boardsPanel.open {
+            transform: translateX(0);
+        }
+
+        .panel-title {
+            margin-bottom: 18px;
+            color: var(--text-light);
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        .panel-title::after {
+            content: "";
+            display: block;
+            width: 46px;
+            height: 3px;
+            margin-top: 8px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent), var(--blue-accent));
+        }
+
+        #sidePanel button,
+        #boardsPanel button {
+            width: 100%;
+            padding: 11px 12px;
+            margin-bottom: 8px;
+
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+
+            transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
+        }
+
+        #sidePanel button:hover,
+        #boardsPanel button:hover {
+            background: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateX(2px);
+        }
+
+        #connectNoteBtn.active {
+            background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+            border-color: rgba(255, 255, 255, 0.26);
+        }
+
+        /* Управление связями */
+
+        .connection-type-block {
+            margin: 12px 0 10px 0;
+            padding: 12px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .connection-type-block label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        #connectionTypeSelect,
+        #connectionColorInput {
+            width: 100%;
+            margin-bottom: 9px;
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            border-radius: 11px;
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--text-light);
+        }
+
+        #connectionTypeSelect {
+            padding: 9px 10px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        #connectionTypeSelect option {
+            color: #222;
+        }
+
+        #connectionColorInput {
+            height: 38px;
+            padding: 4px;
+            cursor: pointer;
+        }
+
+        /* Список досок */
+
+        #boardsList {
+            max-height: calc(100vh - 360px);
+            overflow-y: auto;
+            padding-right: 4px;
+            margin-top: 10px;
+        }
+
+        .board-item {
+            margin-bottom: 8px;
+            padding: 10px 11px;
+
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.09);
+            color: var(--text-light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .board-item:hover {
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .board-item.active {
+            box-shadow: inset 0 0 0 2px var(--accent);
+            background: rgba(217, 111, 174, 0.2);
+        }
+
+        .board-name {
+            color: var(--text-light);
+        }
+
+        .delete-board-btn,
+        .rename-board-btn {
+            color: var(--text-light) !important;
+            opacity: 0.75;
+        }
+
+        .delete-board-btn:hover {
+            color: var(--danger) !important;
+            opacity: 1;
+        }
+
+        .rename-board-btn:hover {
+            color: var(--blue-accent) !important;
+            opacity: 1;
+        }
+
+        /* Записки */
+
+        .note {
+            width: 200px;
+            height: 200px;
+            min-width: 160px;
+            min-height: 150px;
+
+            background: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid rgba(41, 36, 47, 0.18);
+            border-radius: var(--radius-xl);
+            padding: 15px;
+
+            position: absolute;
+            left: 200px;
+            top: 150px;
+            z-index: 1;
+
+            box-shadow: var(--shadow-card);
+        }
+
+        .note-header {
+            font-weight: 700;
+            cursor: grab;
+            user-select: none;
+
+            margin: -15px -15px 10px -15px;
+            padding: 13px 14px 10px 14px;
+            min-height: 1px;
+
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            background: rgba(255, 255, 255, 0.28);
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .note-title {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+            font-size: 16px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: text;
+        }
+
+        .note-text {
+            width: 100%;
+            height: calc(100% - 45px);
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            color: var(--text-main);
+            font-size: 15px;
+            line-height: 1.35;
+            font-family: inherit;
+        }
+
+        .note-color {
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(41, 36, 47, 0.16);
+            border-radius: 50%;
+            background: transparent;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .delete-note-btn {
+            background: transparent;
+            border: none;
+            color: rgba(41, 36, 47, 0.65);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+
+        .delete-note-btn:hover {
+            color: #a00000;
+        }
+
+        /* Картинки */
+
+        .board-image {
+            width: 260px;
+            height: 180px;
+            min-width: 100px;
+            min-height: 80px;
+
+            position: absolute;
+            left: 250px;
+            top: 200px;
+            z-index: 1;
+
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: var(--radius-xl);
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            box-sizing: border-box;
+            box-shadow: var(--shadow-card);
+        }
+
+        .board-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .delete-image-btn {
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            width: 26px;
+            height: 26px;
+
+            border: none;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.78);
+            color: var(--text-main);
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 26px;
+            padding: 0;
+
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+        }
+
+        .delete-image-btn:hover {
+            background: #ffd6df;
+            color: #8b0000;
+        }
+
+        /* Лист для рисования */
+
+        .drawing-sheet {
+            width: 520px;
+            height: 360px;
+            min-width: 220px;
+            min-height: 160px;
+
+            position: absolute;
+            left: 280px;
+            top: 220px;
+            z-index: 1;
+
+            background: #fffdf7;
+            border: 1px solid rgba(41, 36, 47, 0.18);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-sizing: border-box;
+            box-shadow: var(--shadow-card);
+        }
+
+        .drawing-sheet-header {
+            height: 38px;
+            background: linear-gradient(90deg, #f4ead9, #efe2d0);
+            border-bottom: 1px solid rgba(41, 36, 47, 0.12);
+            cursor: grab;
+            user-select: none;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 0 10px;
+
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .drawing-sheet-title {
+            flex: 1;
+            min-width: 60px;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: 700;
+            font-family: inherit;
+        }
+
+        .drawing-sheet-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .drawing-tool-btn,
+        .clear-sheet-btn,
+        .delete-sheet-btn {
+            border: 1px solid rgba(41, 36, 47, 0.15);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.45);
+            color: var(--text-main);
+            cursor: pointer;
+            font-size: 12px;
+            padding: 3px 7px;
+        }
+
+        .drawing-tool-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .clear-sheet-btn:hover {
+            color: #006b8f;
+            background: rgba(135, 215, 255, 0.2);
+        }
+
+        .delete-sheet-btn {
+            font-size: 17px;
+            padding: 1px 7px;
+        }
+
+        .delete-sheet-btn:hover {
+            color: #a00000;
+            background: #ffd6df;
+        }
+
+        .drawing-canvas {
+            display: block;
+            width: 100%;
+            height: calc(100% - 38px);
+            background: #ffffff;
+            cursor: crosshair;
+        }
+
+        /* Активные состояния */
+
+        .note.active-note,
+        .board-image.active-note,
+        .drawing-sheet.active-note {
+            box-shadow:
+                0 0 0 3px rgba(217, 111, 174, 0.5),
+                var(--shadow-card);
+        }
+
+        .note.selected,
+        .board-image.selected,
+        .drawing-sheet.selected {
+            outline: 3px solid var(--accent-strong);
+        }
+
+        .note.group-selected,
+        .board-image.group-selected,
+        .drawing-sheet.group-selected {
+            outline: 3px dashed var(--blue-accent);
+        }
+
+        /* Уголок ресайза */
+
+        .resize-handle {
+            position: absolute;
+            right: 7px;
+            bottom: 7px;
+            width: 18px;
+            height: 18px;
+            cursor: nwse-resize;
+        }
+
+        .resize-handle::after {
+            content: "";
+            position: absolute;
+            right: 2px;
+            bottom: 2px;
+            width: 11px;
+            height: 11px;
+            border-right: 2px solid rgba(41, 36, 47, 0.45);
+            border-bottom: 2px solid rgba(41, 36, 47, 0.45);
+        }
+
+        .panel-section {
+            margin-bottom: 16px;
+            padding: 12px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.055);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+        }
+
+        .panel-section-title {
+            margin-bottom: 9px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        #sidePanel .panel-section button,
+        #boardsPanel .panel-section button {
+            margin-bottom: 7px;
+        }
+
+        #sidePanel .panel-section button:last-child,
+        #boardsPanel .panel-section button:last-child {
+            margin-bottom: 0;
+        }
+
+        .primary-action {
+            background: linear-gradient(135deg, var(--accent-dark), var(--accent)) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .primary-action:hover {
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong)) !important;
+        }
+
+        .danger-action {
+            background: rgba(255, 107, 134, 0.14) !important;
+            border-color: rgba(255, 107, 134, 0.28) !important;
+        }
+
+        .danger-action:hover {
+            background: rgba(255, 107, 134, 0.24) !important;
+            border-color: rgba(255, 107, 134, 0.45) !important;
+        }
+
+        #boardsList {
+            max-height: calc(100vh - 480px);
+            overflow-y: auto;
+            padding-right: 4px;
+            margin-top: 8px;
+        }
+
+        #sidePanel,
+        #boardsPanel {
+            overflow-y: auto;
+        }
+
+        body[data-theme="dark"] {
+            --app-bg: #17151f;
+            --app-bg-soft: #201d2b;
+            --panel-bg: rgba(34, 30, 45, 0.78);
+            --panel-border: rgba(255, 255, 255, 0.12);
+            --card-bg: #f7ecd8;
+            --card-bg-2: #fff8eb;
+            --text-main: #29242f;
+            --text-light: #f6eef8;
+            --text-muted: rgba(246, 238, 248, 0.64);
+            --accent: #d96fae;
+            --accent-strong: #ff8ccf;
+            --accent-dark: #8b3f6f;
+            --blue-accent: #87d7ff;
+            --danger: #ff6b86;
+        }
+
+        body[data-theme="light"] {
+            --app-bg: #f4eadc;
+            --app-bg-soft: #eadcc8;
+            --panel-bg: rgba(255, 250, 241, 0.82);
+            --panel-border: rgba(82, 62, 42, 0.16);
+            --card-bg: #fff8eb;
+            --card-bg-2: #ffffff;
+            --text-main: #33281f;
+            --text-light: #33281f;
+            --text-muted: rgba(51, 40, 31, 0.62);
+            --accent: #b9784f;
+            --accent-strong: #d28a5a;
+            --accent-dark: #7f4f32;
+            --blue-accent: #4c9ba7;
+            --danger: #c7515d;
+        }
+
+        body[data-theme="sakura"] {
+            --app-bg: #f6c6dd;
+            --app-bg-soft: #f1abc9;
+            --panel-bg: rgba(255, 239, 247, 0.82);
+            --panel-border: rgba(99, 47, 75, 0.15);
+            --card-bg: #fff3e2;
+            --card-bg-2: #fff9f1;
+            --text-main: #3b2530;
+            --text-light: #3b2530;
+            --text-muted: rgba(59, 37, 48, 0.62);
+            --accent: #d85e9f;
+            --accent-strong: #f078b9;
+            --accent-dark: #9e3b73;
+            --blue-accent: #6ebac8;
+            --danger: #d94f68;
+        }
+
+        body[data-theme="ocean"] {
+            --app-bg: #d8eee9;
+            --app-bg-soft: #bdded8;
+            --panel-bg: rgba(238, 252, 249, 0.82);
+            --panel-border: rgba(30, 83, 88, 0.16);
+            --card-bg: #fff7e8;
+            --card-bg-2: #ffffff;
+            --text-main: #203637;
+            --text-light: #203637;
+            --text-muted: rgba(32, 54, 55, 0.62);
+            --accent: #3b9c9c;
+            --accent-strong: #4ebbbb;
+            --accent-dark: #256b6b;
+            --blue-accent: #4378c7;
+            --danger: #d25d6c;
+        }
+
+        .theme-select-block {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .theme-select-block label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        #themeSelect {
+            width: 100%;
+            padding: 9px 10px;
+            border-radius: 11px;
+            border: 1px solid var(--panel-border);
+            background: rgba(255, 255, 255, 0.16);
+            color: var(--text-light);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        #themeSelect option {
+            color: #222;
+        }
+
+                /* ===== Theme UI fix ===== */
+
+        body[data-theme="dark"] {
+            --ui-button-bg: rgba(255, 255, 255, 0.09);
+            --ui-button-bg-hover: rgba(255, 255, 255, 0.16);
+            --ui-button-border: rgba(255, 255, 255, 0.13);
+            --ui-button-text: #f6eef8;
+
+            --toggle-bg: rgba(34, 30, 45, 0.9);
+            --toggle-bg-hover: rgba(217, 111, 174, 0.3);
+            --toggle-text: #f6eef8;
+
+            --section-bg: rgba(255, 255, 255, 0.055);
+            --section-border: rgba(255, 255, 255, 0.09);
+        }
+
+        body[data-theme="light"] {
+            --ui-button-bg: rgba(185, 120, 79, 0.16);
+            --ui-button-bg-hover: rgba(185, 120, 79, 0.27);
+            --ui-button-border: rgba(127, 79, 50, 0.22);
+            --ui-button-text: #33281f;
+
+            --toggle-bg: rgba(255, 250, 241, 0.94);
+            --toggle-bg-hover: rgba(185, 120, 79, 0.24);
+            --toggle-text: #33281f;
+
+            --section-bg: rgba(255, 255, 255, 0.32);
+            --section-border: rgba(127, 79, 50, 0.14);
+        }
+
+        body[data-theme="sakura"] {
+            --ui-button-bg: rgba(216, 94, 159, 0.18);
+            --ui-button-bg-hover: rgba(216, 94, 159, 0.3);
+            --ui-button-border: rgba(158, 59, 115, 0.22);
+            --ui-button-text: #3b2530;
+
+            --toggle-bg: rgba(255, 239, 247, 0.94);
+            --toggle-bg-hover: rgba(216, 94, 159, 0.25);
+            --toggle-text: #3b2530;
+
+            --section-bg: rgba(255, 255, 255, 0.27);
+            --section-border: rgba(158, 59, 115, 0.14);
+        }
+
+        body[data-theme="ocean"] {
+            --ui-button-bg: rgba(59, 156, 156, 0.18);
+            --ui-button-bg-hover: rgba(59, 156, 156, 0.3);
+            --ui-button-border: rgba(37, 107, 107, 0.22);
+            --ui-button-text: #203637;
+
+            --toggle-bg: rgba(238, 252, 249, 0.94);
+            --toggle-bg-hover: rgba(59, 156, 156, 0.25);
+            --toggle-text: #203637;
+
+            --section-bg: rgba(255, 255, 255, 0.3);
+            --section-border: rgba(37, 107, 107, 0.14);
+        }
+
+        #togglePanelBtn,
+        #toggleBoardsPanelBtn {
+            background: var(--toggle-bg) !important;
+            color: var(--toggle-text) !important;
+            border-color: var(--panel-border) !important;
+        }
+
+        #togglePanelBtn:hover,
+        #toggleBoardsPanelBtn:hover {
+            background: var(--toggle-bg-hover) !important;
+            border-color: var(--accent) !important;
+        }
+
+        #sidePanel button,
+        #boardsPanel button {
+            background: var(--ui-button-bg) !important;
+            color: var(--ui-button-text) !important;
+            border-color: var(--ui-button-border) !important;
+        }
+
+        #sidePanel button:hover,
+        #boardsPanel button:hover {
+            background: var(--ui-button-bg-hover) !important;
+            border-color: var(--accent) !important;
+        }
+
+        .primary-action {
+            background: linear-gradient(135deg, var(--accent-dark), var(--accent)) !important;
+            color: white !important;
+            border-color: rgba(255, 255, 255, 0.28) !important;
+        }
+
+        .primary-action:hover {
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong)) !important;
+        }
+
+        .danger-action {
+            background: rgba(255, 107, 134, 0.18) !important;
+            color: var(--ui-button-text) !important;
+            border-color: rgba(255, 107, 134, 0.35) !important;
+        }
+
+        .danger-action:hover {
+            background: rgba(255, 107, 134, 0.3) !important;
+        }
+
+        .panel-section {
+            background: var(--section-bg) !important;
+            border-color: var(--section-border) !important;
+        }
+
+        #themeSelect,
+        #connectionTypeSelect {
+            background: var(--ui-button-bg) !important;
+            color: var(--ui-button-text) !important;
+            border-color: var(--ui-button-border) !important;
+        }
+
+        #themeSelect option,
+        #connectionTypeSelect option {
+            color: #222;
+        }
+
+        #linesLayer {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            overflow: visible;
+        }
+
+        .note-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .board-select {
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .delete-board-btn,
+        .rename-board-btn {
+            background: transparent !important;
+            border: none !important;
+            padding: 0 4px !important;
+            margin: 0 !important;
+            width: auto !important;
+            font-size: 16px !important;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .delete-board-btn:hover {
+            color: var(--danger) !important;
+        }
+
+        .rename-board-btn:hover {
+            color: var(--blue-accent) !important;
+        }
+
+        /* ===== Theme grid fix ===== */
+
+        body[data-theme="dark"] {
+            --grid-dot: rgba(255, 255, 255, 0.13);
+            --board-glow-one: rgba(217, 111, 174, 0.2);
+            --board-glow-two: rgba(135, 215, 255, 0.14);
+        }
+
+        body[data-theme="light"] {
+            --grid-dot: rgba(82, 62, 42, 0.18);
+            --board-glow-one: rgba(185, 120, 79, 0.14);
+            --board-glow-two: rgba(76, 155, 167, 0.12);
+        }
+
+        body[data-theme="sakura"] {
+            --grid-dot: rgba(99, 47, 75, 0.18);
+            --board-glow-one: rgba(216, 94, 159, 0.16);
+            --board-glow-two: rgba(110, 186, 200, 0.12);
+        }
+
+        body[data-theme="ocean"] {
+            --grid-dot: rgba(30, 83, 88, 0.18);
+            --board-glow-one: rgba(59, 156, 156, 0.14);
+            --board-glow-two: rgba(67, 120, 199, 0.11);
+        }
+
+        #board {
+            background-color: var(--app-bg) !important;
+            background-image:
+                radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 0),
+                radial-gradient(circle at 20% 10%, var(--board-glow-one), transparent 28%),
+                radial-gradient(circle at 80% 90%, var(--board-glow-two), transparent 30%) !important;
+            background-size:
+                28px 28px,
+                100% 100%,
+                100% 100% !important;
+        }
+
+        .object-search-input {
+            width: 100%;
+            padding: 9px 10px;
+            margin-bottom: 10px;
+            border-radius: 11px;
+            border: 1px solid var(--ui-button-border);
+            background: var(--ui-button-bg);
+            color: var(--ui-button-text);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .object-search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .objects-list {
+            max-height: 210px;
+            overflow-y: auto;
+            padding-right: 3px;
+        }
+
+        .object-list-item {
+            width: 100%;
+            margin-bottom: 6px !important;
+            padding: 8px 9px !important;
+            border-radius: 10px !important;
+            background: var(--ui-button-bg) !important;
+            border: 1px solid var(--ui-button-border) !important;
+            color: var(--ui-button-text) !important;
+            cursor: pointer;
+            text-align: left;
+            display: block;
+        }
+
+        .object-list-item:hover {
+            background: var(--ui-button-bg-hover) !important;
+            border-color: var(--accent) !important;
+        }
+
+        .object-list-title {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .object-list-type {
+            display: block;
+            margin-top: 3px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .object-list-empty {
+            padding: 10px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-size: 13px;
+            background: var(--section-bg);
+            border: 1px solid var(--section-border);
+        }
+
+        #connectNoteBtn.active {
+            background: linear-gradient(135deg, var(--accent-dark), var(--accent)) !important;
+            color: white !important;
+            border-color: var(--accent-strong) !important;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18), 0 0 18px rgba(217, 111, 174, 0.35) !important;
+        }
+
+        #connectNoteBtn.active::before {
+            content: "● ";
+        }
+
+        .pin-object-btn,
+        .pin-sheet-btn {
+            width: 26px;
+            height: 26px;
+            border: 1px solid rgba(41, 36, 47, 0.16);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.38);
+            color: rgba(41, 36, 47, 0.55);
+            cursor: pointer;
+            font-size: 13px;
+            line-height: 24px;
+            padding: 0;
+            flex-shrink: 0;
+        }
+
+        .pin-object-btn:hover,
+        .pin-sheet-btn:hover {
+            color: var(--accent-dark);
+            border-color: var(--accent);
+        }
+
+        .pin-object-btn.pinned,
+        .pin-sheet-btn.pinned {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent-strong);
+        }
+
+        #linesLayer {
+            pointer-events: auto;
+        }
+
+        .connection-line {
+            pointer-events: none;
+        }
+
+        .curve-control-handle {
+            pointer-events: all;
+            cursor: grab;
+            stroke: white;
+            stroke-width: 2;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
+        }
+
+        .curve-control-handle:hover {
+            stroke-width: 3;
+        }
+
+        .curve-control-handle.dragging {
+            cursor: grabbing;
+        }
+
+        #linesLayer {
+            z-index: 25 !important;
+            pointer-events: none !important;
+        }
+
+        .connection-line {
+            pointer-events: none;
+        }
+
+        .curve-control-handle,
+        .connection-endpoint-handle {
+            pointer-events: all;
+        }
+
+        .connection-endpoint-handle {
+            cursor: grab;
+            stroke: white;
+            stroke-width: 1.5;
+            opacity: 0.9;
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.22));
+        }
+
+        .connection-endpoint-handle:hover {
+            stroke-width: 2;
+            opacity: 1;
+        }
+
+        .connection-endpoint-handle.dragging {
+            cursor: grabbing;
+        }
+
+        .connection-node {
+            width: 30px;
+            height: 30px;
+            position: absolute;
+            left: 300px;
+            top: 300px;
+            z-index: 9999;
+
+            border-radius: 999px;
+            background: var(--accent);
+            border: 4px solid white;
+            box-shadow:
+                0 0 0 2px rgba(0, 0, 0, 0.12),
+                0 8px 18px rgba(0, 0, 0, 0.22);
+
+            cursor: grab;
+            box-sizing: border-box;
+        }
+
+        .connection-node:hover {
+            transform: scale(1.08);
+        }
+
+        .connection-node.active-note {
+            box-shadow:
+                0 0 0 3px var(--accent-strong),
+                0 8px 18px rgba(0, 0, 0, 0.24);
+        }
+
+        .connection-node.selected {
+            outline: 3px solid var(--accent-strong);
+        }
+
+        .connection-node.group-selected {
+            outline: 3px dashed var(--blue-accent);
+        }
+
+        .empty-state {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            z-index: 3;
+
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+
+            transition:
+                opacity 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        .empty-state.hidden {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.96);
+        }
+
+        .empty-state-card {
+            width: 360px;
+            max-width: calc(100vw - 80px);
+
+            padding: 26px 24px;
+
+            border-radius: 24px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(18px);
+
+            text-align: center;
+            color: var(--text-light);
+        }
+
+        .empty-state-icon {
+            width: 46px;
+            height: 46px;
+
+            margin: 0 auto 14px auto;
+
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+            color: white;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 24px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .empty-state-title {
+            margin-bottom: 8px;
+
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+        }
+
+        .empty-state-text {
+            margin-bottom: 16px;
+
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .empty-state-hotkeys {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 7px;
+        }
+
+        .empty-state-hotkeys span {
+            padding: 6px 9px;
+
+            border-radius: 999px;
+            background: var(--ui-button-bg);
+            border: 1px solid var(--ui-button-border);
+            color: var(--ui-button-text);
+
+            font-size: 12px;
+        }
+
+        /* ===== Custom scrollbars ===== */
+
+        body[data-theme="dark"] {
+            --scrollbar-track: rgba(255, 255, 255, 0.04);
+            --scrollbar-thumb: rgba(255, 255, 255, 0.22);
+            --scrollbar-thumb-hover: rgba(255, 255, 255, 0.36);
+        }
+
+        body[data-theme="light"] {
+            --scrollbar-track: rgba(127, 79, 50, 0.06);
+            --scrollbar-thumb: rgba(127, 79, 50, 0.28);
+            --scrollbar-thumb-hover: rgba(127, 79, 50, 0.44);
+        }
+
+        body[data-theme="sakura"] {
+            --scrollbar-track: rgba(158, 59, 115, 0.06);
+            --scrollbar-thumb: rgba(158, 59, 115, 0.25);
+            --scrollbar-thumb-hover: rgba(158, 59, 115, 0.42);
+        }
+
+        body[data-theme="ocean"] {
+            --scrollbar-track: rgba(37, 107, 107, 0.06);
+            --scrollbar-thumb: rgba(37, 107, 107, 0.26);
+            --scrollbar-thumb-hover: rgba(37, 107, 107, 0.42);
+        }
+
+        #sidePanel,
+        #boardsPanel,
+        #boardsList,
+        .objects-list,
+        .help-content,
+        .note-text {
+            scrollbar-width: thin;
+            scrollbar-color: var(--scrollbar-thumb) transparent;
+            scrollbar-gutter: stable;
+        }
+
+        #sidePanel::-webkit-scrollbar,
+        #boardsPanel::-webkit-scrollbar,
+        #boardsList::-webkit-scrollbar,
+        .objects-list::-webkit-scrollbar,
+        .help-content::-webkit-scrollbar,
+        .note-text::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        #sidePanel::-webkit-scrollbar-track,
+        #boardsPanel::-webkit-scrollbar-track,
+        #boardsList::-webkit-scrollbar-track,
+        .objects-list::-webkit-scrollbar-track,
+        .help-content::-webkit-scrollbar-track,
+        .note-text::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+            border-radius: 999px;
+        }
+
+        #sidePanel::-webkit-scrollbar-thumb,
+        #boardsPanel::-webkit-scrollbar-thumb,
+        #boardsList::-webkit-scrollbar-thumb,
+        .objects-list::-webkit-scrollbar-thumb,
+        .help-content::-webkit-scrollbar-thumb,
+        .note-text::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        #sidePanel::-webkit-scrollbar-thumb:hover,
+        #boardsPanel::-webkit-scrollbar-thumb:hover,
+        #boardsList::-webkit-scrollbar-thumb:hover,
+        .objects-list::-webkit-scrollbar-thumb:hover,
+        .help-content::-webkit-scrollbar-thumb:hover,
+        .note-text::-webkit-scrollbar-thumb:hover {
+            background: var(--scrollbar-thumb-hover);
+            background-clip: padding-box;
+        }
+
+        #sidePanel::-webkit-scrollbar-corner,
+        #boardsPanel::-webkit-scrollbar-corner,
+        #boardsList::-webkit-scrollbar-corner,
+        .objects-list::-webkit-scrollbar-corner,
+        .help-content::-webkit-scrollbar-corner,
+        .note-text::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+
+        /* ===== Top status panel ===== */
+
+        .top-status-panel {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            z-index: 45;
+
+            transform: translateX(-50%);
+
+            min-height: 44px;
+            padding: 7px 8px 7px 14px;
+
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            border-radius: 16px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(18px);
+
+            color: var(--text-light);
+        }
+
+        .board-status-text {
+            max-width: 310px;
+
+            font-size: 13px;
+            font-weight: 700;
+
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .top-status-divider {
+            width: 1px;
+            height: 22px;
+            margin: 0 2px;
+
+            background: var(--panel-border);
+        }
+
+        .top-status-btn {
+            min-width: 32px;
+            height: 30px;
+
+            padding: 0 10px;
+
+            border-radius: 10px;
+            border: 1px solid var(--ui-button-border);
+            background: var(--ui-button-bg);
+            color: var(--ui-button-text);
+
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+
+            transition:
+                background 0.16s ease,
+                border-color 0.16s ease,
+                transform 0.16s ease;
+        }
+
+        .top-status-btn:hover {
+            background: var(--ui-button-bg-hover);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .top-status-btn.wide {
+            min-width: 105px;
+        }
+
+        .zoom-level-text {
+            min-width: 44px;
+
+            text-align: center;
+            color: var(--text-light);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 760px) {
+            .top-status-panel {
+                top: 66px;
+                max-width: calc(100vw - 28px);
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .board-status-text {
+                max-width: 260px;
+            }
+        }
+
+        /* ===== Toast notifications ===== */
+
+        .toast-container {
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            z-index: 120;
+
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+
+            pointer-events: none;
+        }
+
+        .toast {
+            min-width: 220px;
+            max-width: 320px;
+
+            padding: 12px 14px;
+
+            border-radius: 16px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(18px);
+
+            color: var(--text-light);
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.35;
+
+            opacity: 0;
+            transform: translateY(10px) scale(0.96);
+
+            transition:
+                opacity 0.18s ease,
+                transform 0.18s ease;
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .toast.success {
+            border-color: rgba(70, 190, 120, 0.45);
+        }
+
+        .toast.warning {
+            border-color: rgba(255, 180, 80, 0.55);
+        }
+
+        .toast.danger {
+            border-color: rgba(255, 90, 90, 0.55);
+        }
+
+        .toast.mode {
+            border-color: var(--accent);
+        }
+
+        @media (max-width: 760px) {
+            .toast-container {
+                left: 14px;
+                right: 14px;
+                bottom: 14px;
+            }
+
+            .toast {
+                min-width: 0;
+                max-width: none;
+                width: 100%;
+            }
+        }
+
+        .help-section {
+            margin-bottom: 22px;
+            padding-bottom: 18px;
+
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .help-section:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+
+            border-bottom: none;
+        }
+
+        .help-section h3 {
+            margin: 0 0 8px 0;
+
+            color: var(--text-light);
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .help-section p {
+            margin: 0 0 12px 0;
+
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .help-section ul {
+            margin: 8px 0 0 18px;
+            padding: 0;
+
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.55;
+        }
+
+        .help-section li {
+            margin-bottom: 5px;
+        }
+
+        .help-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .help-grid div {
+            padding: 9px 10px;
+
+            border-radius: 12px;
+            background: var(--section-bg);
+            border: 1px solid var(--section-border);
+
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .help-grid b {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        .help-grid span {
+            color: var(--text-muted);
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        @media (max-width: 700px) {
+            .help-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+
+            pointer-events: auto;
+        }
+
+        .toast-message {
+            flex: 1;
+        }
+
+        .toast-undo-btn {
+            width: 26px;
+            height: 26px;
+
+            border-radius: 999px;
+            border: 1px solid var(--ui-button-border);
+            background: var(--ui-button-bg);
+            color: var(--ui-button-text);
+
+            cursor: pointer;
+
+            font-size: 17px;
+            font-weight: 800;
+            line-height: 1;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            transition:
+                background 0.15s ease,
+                border-color 0.15s ease,
+                transform 0.15s ease;
+        }
+
+        .toast-undo-btn:hover {
+            background: var(--ui-button-bg-hover);
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+            transform: scale(1.06);
+        }
+      </style>
+
+  </head>
+
+  <body>
+    <button id="togglePanelBtn">
+        ☰
+    </button>
+    <button id="toggleBoardsPanelBtn">
+        ☰
+    </button>
+    <div id="topStatusPanel" class="top-status-panel">
+        <div id="boardStatusText" class="board-status-text">
+            Доска · 0 объектов · 0 связей
+        </div>
+
+        <div class="top-status-divider"></div>
+
+        <button id="zoomOutBtn" class="top-status-btn">
+            −
+        </button>
+
+        <div id="zoomLevelText" class="zoom-level-text">
+            100%
+        </div>
+
+        <button id="zoomInBtn" class="top-status-btn">
+            +
+        </button>
+
+        <button id="centerViewBtn" class="top-status-btn wide">
+            Центрировать
+        </button>
+    </div>
+    <div id="toastContainer" class="toast-container"></div>
+    <div id="sidePanel" class="open">
+        <div class="panel-title">
+            Idea Board
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-section-title">
+                Объекты
+            </div>
+
+            <button id="addNoteBtn" class="primary-action">
+                + Заметка
+            </button>
+
+            <button id="addDrawingSheetBtn" class="primary-action">
+                + Лист
+            </button>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-section-title">
+                Навигация
+            </div>
+
+            <input 
+                id="objectSearchInput" 
+                class="object-search-input" 
+                type="text" 
+                placeholder="Найти объект..."
+            >
+
+            <div id="objectsList" class="objects-list">
+
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-section-title">
+                Связи
+            </div>
+
+            <button id="connectNoteBtn">
+                Связать
+            </button>
+
+            <button id="addConnectionNodeBtn">
+                + Узел связи
+            </button>
+
+            <div class="connection-type-block">
+                <label for="connectionTypeSelect">
+                    Тип связи
+                </label>
+
+                <select id="connectionTypeSelect">
+                    <option value="line">Обычная линия</option>
+                    <option value="arrow">Стрелка</option>
+                    <option value="curve">Кривая линия</option>
+                    <option value="curve-arrow">Кривая стрелка</option>
+                    <option value="curve-double-arrow">Кривая двусторонняя стрелка</option>
+                    <option value="curve-dashed">Кривая пунктирная линия</option>
+                    <option value="double-arrow">Двусторонняя стрелка</option>
+                    <option value="dashed">Прерывистая линия</option>
+                    <option value="dashed-arrow">Прерывистая стрелка</option>
+                    <option value="dotted">Пунктирная линия</option>
+                    <option value="thick">Толстая линия</option>
+                    <option value="thin">Тонкая линия</option>
+                </select>
+
+                <label for="connectionColorInput">
+                    Цвет связи
+                </label>
+
+                <input id="connectionColorInput" type="color" value="#ff0000">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-section-title">
+                Группы
+            </div>
+
+            <button id="groupObjectsBtn">
+                Сгруппировать
+            </button>
+
+            <button id="ungroupObjectsBtn">
+                Разгруппировать
+            </button>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-section-title">
+                Управление
+            </div>
+
+            <button id="clearAllBtn" class="danger-action">
+                Очистить всё
+            </button>
+
+            <button id="openHelpBtn">
+                Руководство
+            </button>
+
+            <div class="theme-select-block">
+                <label for="themeSelect">
+                    Тема интерфейса
+                </label>
+
+                <select id="themeSelect">
+                    <option value="dark">Dark AI</option>
+                    <option value="light">Light Cream</option>
+                    <option value="sakura">Sakura</option>
+                    <option value="ocean">Ocean</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="boardsPanel" class="open">
+        <div class="panel-title">
+            Доски
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-section-title">
+                Текущие доски
+            </div>
+
+            <button id="addBoardBtn" class="primary-action">
+                + Доска
+            </button>
+
+            <div id="boardsList">
+
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-section-title">
+                Экспорт
+            </div>
+
+            <button id="exportDataBtn">
+                Экспорт всех досок
+            </button>
+
+            <button id="exportCurrentBoardBtn">
+                Экспорт текущей доски
+            </button>
+
+            <button id="exportSelectedBoardsBtn">
+                Экспорт выбранных досок
+            </button>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-section-title">
+                Импорт
+            </div>
+
+            <button id="importDataBtn" class="danger-action">
+                Заменить все доски
+            </button>
+
+            <button id="importMergeDataBtn">
+                Добавить доски из файла
+            </button>
+
+            <input id="importFileInput" type="file" accept=".json" style="display: none;">
+        </div>
+    </div>
+
+    <div id="helpOverlay" class="help-overlay hidden">
+        <div class="help-window">
+            <div class="help-header">
+                <div>
+                    <div class="help-title">Руководство по доске</div>
+                    <div class="help-subtitle">Краткая инструкция по основным функциям редактора</div>
+                </div>
+
+                <button id="closeHelpBtn" class="help-close-btn">×</button>
+            </div>
+
+            <div class="help-content">
+                <section class="help-section">
+                    <h3>Основные объекты</h3>
+
+                    <p>
+                        На доске можно создавать заметки, листы для рисования, картинки и узлы связи.
+                        Все объекты можно перемещать мышкой, выделять и соединять линиями.
+                    </p>
+
+                    <div class="help-grid">
+                        <div><b>N</b><span>создать заметку</span></div>
+                        <div><b>L</b><span>создать лист для рисования</span></div>
+                        <div><b>Ctrl + V</b><span>вставить картинку</span></div>
+                        <div><b>H</b><span>открыть или закрыть руководство</span></div>
+                    </div>
+                </section>
+
+                <section class="help-section">
+                    <h3>Заметки</h3>
+
+                    <p>
+                        У заметки можно менять заголовок, текст, цвет и размер. Заметки можно двигать по доске,
+                        связывать с другими объектами и добавлять в группы.
+                    </p>
+
+                    <ul>
+                        <li>Клик по заметке — выбрать заметку.</li>
+                        <li>Перетаскивание за верхнюю часть — переместить заметку.</li>
+                        <li>Правый нижний угол — изменить размер.</li>
+                        <li>Кнопка удаления удаляет заметку вместе с её связями.</li>
+                    </ul>
+                </section>
+
+                <section class="help-section">
+                    <h3>Листы для рисования</h3>
+
+                    <p>
+                        Лист для рисования — это белая область, на которой можно делать наброски.
+                        Его можно двигать, соединять с другими объектами и использовать как визуальную заметку.
+                    </p>
+
+                    <div class="help-grid">
+                        <div><b>1</b><span>кисть</span></div>
+                        <div><b>2</b><span>ластик</span></div>
+                        <div><b>R</b><span>очистить активный лист</span></div>
+                    </div>
+                </section>
+
+                <section class="help-section">
+                    <h3>Связи и линии</h3>
+
+                    <p>
+                        В режиме связи можно соединять любые объекты: заметки, картинки, листы и узлы.
+                        Для создания связи включи режим связи и выбери два объекта.
+                    </p>
+
+                    <ul>
+                        <li>Линия может быть обычной, со стрелкой, двусторонней, пунктирной, тонкой или толстой.</li>
+                        <li>Кривую линию можно изгибать за центральную точку.</li>
+                        <li>Начало и конец связи можно двигать по краю объекта.</li>
+                        <li>Правая кнопка по ручке начала или конца возвращает автоматическую привязку.</li>
+                        <li>Правая кнопка по ручке кривой возвращает автоматический изгиб.</li>
+                    </ul>
+
+                    <div class="help-grid">
+                        <div><b>C</b><span>включить режим связи</span></div>
+                        <div><b>Esc</b><span>выйти из режима связи</span></div>
+                    </div>
+                </section>
+
+                <section class="help-section">
+                    <h3>Узлы связи</h3>
+
+                    <p>
+                        Узел связи — это маленькая точка-разветвитель. К ней можно подключать несколько линий,
+                        чтобы делать схемы вида: один объект → узел → несколько объектов.
+                    </p>
+
+                    <ul>
+                        <li>Все линии, которые входят в узел или выходят из него, крепятся к центру узла.</li>
+                        <li>Узел можно перемещать как обычный объект.</li>
+                        <li>Узел можно соединять с заметками, картинками, листами и другими узлами.</li>
+                        <li>Выбранный узел можно удалить клавишей Delete или Backspace.</li>
+                        <li>Правый клик по узлу удаляет его сразу.</li>
+                    </ul>
+                </section>
+
+                <section class="help-section">
+                    <h3>Группы</h3>
+
+                    <p>
+                        Несколько объектов можно объединять в группу, чтобы перемещать их вместе.
+                    </p>
+
+                    <div class="help-grid">
+                        <div><b>Shift + клик</b><span>выбрать объект для группы</span></div>
+                        <div><b>G</b><span>создать группу</span></div>
+                        <div><b>U</b><span>разгруппировать</span></div>
+                    </div>
+                </section>
+
+                <section class="help-section">
+                    <h3>Навигация и доски</h3>
+
+                    <p>
+                        Можно создавать несколько досок, переключаться между ними, экспортировать данные и импортировать их обратно.
+                        В списке объектов отображаются закреплённые элементы, а через поиск можно найти любой объект по названию.
+                    </p>
+
+                    <div class="help-grid">
+                        <div><b>B</b><span>открыть/закрыть левую панель</span></div>
+                        <div><b>D</b><span>открыть/закрыть панель досок</span></div>
+                        <div><b>Колесо мыши</b><span>масштаб доски</span></div>
+                        <div><b>Перетаскивание пустого места</b><span>двигать камеру</span></div>
+                    </div>
+                </section>
+
+                <section class="help-section">
+                    <h3>История действий</h3>
+
+                    <p>
+                        Основные действия можно отменять и возвращать.
+                    </p>
+
+                    <div class="help-grid">
+                        <div><b>Ctrl + Z</b><span>отменить действие</span></div>
+                        <div><b>Ctrl + X</b><span>вернуть действие</span></div>
+                        <div><b>Ctrl + C</b><span>копировать объект</span></div>
+                        <div><b>Ctrl + V</b><span>вставить объект или картинку</span></div>
+                    </div>
+                </section>
+
+                <section class="help-section">
+                    <h3>Интерфейс</h3>
+
+                    <p>
+                        Сверху находится мини-панель статуса: она показывает название текущей доски,
+                        количество объектов, количество связей и масштаб. Там же можно быстро приблизить,
+                        отдалить или центрировать доску.
+                    </p>
+
+                    <ul>
+                        <li>Пустая доска показывает стартовую подсказку.</li>
+                        <li>Уведомления внизу показывают создание, удаление и режимы работы.</li>
+                        <li>После удаления объекта в уведомлении появляется кнопка × — она отменяет удаление.</li>
+                        <li>Тема оформления меняется в левой панели.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </div>
+
+      <div id="board">
+        <div id="emptyState" class="empty-state">
+            <div class="empty-state-card">
+                <div class="empty-state-icon">✦</div>
+
+                <div class="empty-state-title">
+                    Начни свою доску
+                </div>
+
+                <div class="empty-state-text">
+                    Создай заметку, лист для рисования, узел связи или вставь картинку.
+                </div>
+
+                <div class="empty-state-hotkeys">
+                    <span>N — заметка</span>
+                    <span>L — лист</span>
+                    <span>Ctrl+V — картинка</span>
+                    <span>H — руководство</span>
+                </div>
+            </div>
+        </div>
+
+        <svg id="linesLayer">
+
+        </svg>
+
+        <div id="workspace">
+
+        </div>
+      </div>
+
+  <script>
+    const board = document.getElementById("board");
+    const addNoteBtn = document.getElementById("addNoteBtn");
+    const connectNoteBtn = document.getElementById("connectNoteBtn");
+    const linesLayer = document.getElementById("linesLayer");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    const workspace = document.getElementById("workspace");
+    const togglePanelBtn = document.getElementById("togglePanelBtn");
+    const sidePanel = document.getElementById("sidePanel");
+    const addBoardBtn = document.getElementById("addBoardBtn")
+    const boardsList = document.getElementById("boardsList")
+    const exportDataBtn = document.getElementById("exportDataBtn")
+    const importDataBtn = document.getElementById("importDataBtn")
+    const importFileInput = document.getElementById("importFileInput")
+    const exportCurrentBoardBtn = document.getElementById("exportCurrentBoardBtn")
+    const importMergeDataBtn = document.getElementById("importMergeDataBtn")
+    const exportSelectedBoardsBtn = document.getElementById("exportSelectedBoardsBtn")
+    const connectionTypeSelect = document.getElementById("connectionTypeSelect");
+    const toggleBoardsPanelBtn = document.getElementById("toggleBoardsPanelBtn");
+    const boardsPanel = document.getElementById("boardsPanel");
+    const connectionColorInput = document.getElementById("connectionColorInput");
+    const groupObjectsBtn = document.getElementById("groupObjectsBtn");
+    const ungroupObjectsBtn = document.getElementById("ungroupObjectsBtn");
+    const addDrawingSheetBtn = document.getElementById("addDrawingSheetBtn");
+    const openHelpBtn = document.getElementById("openHelpBtn");
+    const closeHelpBtn = document.getElementById("closeHelpBtn");
+    const helpOverlay = document.getElementById("helpOverlay");
+    const themeSelect = document.getElementById("themeSelect");
+    const objectSearchInput = document.getElementById("objectSearchInput");
+    const objectsList = document.getElementById("objectsList");
+    const addConnectionNodeBtn = document.getElementById("addConnectionNodeBtn");
+    const emptyState = document.getElementById("emptyState");
+    const topStatusPanel = document.getElementById("topStatusPanel");
+    const boardStatusText = document.getElementById("boardStatusText");
+    const zoomLevelText = document.getElementById("zoomLevelText");
+    const zoomOutBtn = document.getElementById("zoomOutBtn");
+    const zoomInBtn = document.getElementById("zoomInBtn");
+    const centerViewBtn = document.getElementById("centerViewBtn");
+    const toastContainer = document.getElementById("toastContainer");
+
+    let noteCounter = 1;
+
+    let nextNoteX = 230; 
+    let nextNoteY = 170;
+
+    let imageCounter = 1;
+
+    let drawingSheetCounter = 1;
+
+    let connectionNodeCounter = 1;
+
+    const compressedImageMaxWidth = 1400;
+    const compressedImageMaxHeight = 1400;
+    const compressedImageQuality = 0.82;
+
+    let draggedNote = null;
+    let shiftX = 0;
+    let shiftY = 0;
+
+    let isPanning = false;
+    let wasPanningMoved = false;
+
+    let viewX = 0;
+    let viewY = 0;
+    let scale = 1;
+
+    let panStartMouseX = 0;
+    let panStartMouseY = 0;
+
+    let panStartViewX = 0;
+    let panStartViewY = 0;
+
+    let resizingNote = null;
+    let startMouseX = 0;
+    let startMouseY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+
+    let connections = [];
+
+    let connectMode = false;
+    let firstSelectedNote = null;
+
+    let topZIndex = 1;
+
+    let activeNoteId = null;
+    let copiedNoteData = null;
+
+    let boards = []
+    let currentBoardId = 1
+    let boardCounter = 1
+
+    let importMode = "replace";
+
+    let selectedBoardIds = [];
+
+    let undoStack = [];
+    let redoStack = [];
+    const maxHistorySteps = 30;
+    let isRestoringHistory = false;
+
+    let groups = [];
+    let groupCounter = 1;
+    let groupSelectedObjectIds = [];
+    let draggedGroupObjects = [];
+
+    let draggedCurveControlIndex = null;
+
+    let draggedConnectionEndpoint = null;
+
+    function createNote(id, title, text, x, y, color, width, height, zIndex, isPinned) {
+      const note = document.createElement("div");
+
+      note.className = "note";
+      note.dataset.id = id;
+
+      note.innerHTML = `
+        <div class="note-header">
+          <input class="note-title">
+          <div class="note-actions">
+            <button class="pin-object-btn" title="Добавить в якоря">⚓</button>
+            <input class="note-color" type="color">
+            <button class="delete-note-btn">×</button>
+          </div>
+        </div>
+        <textarea class="note-text">${text}</textarea>
+        <div class="resize-handle"></div>
+      `;
+
+      note.style.left = x + "px";
+      note.style.top = y + "px";
+      note.style.background = color;
+      const noteZIndex = zIndex !== undefined ? zIndex : topZIndex;
+      note.style.zIndex = noteZIndex;
+      topZIndex = Math.max(topZIndex, noteZIndex + 1);
+      note.style.width = width + "px";
+      note.style.height = height + "px";
+
+      workspace.appendChild(note);
+
+      makeNoteDraggable(note);
+      makeNoteResizable(note);
+
+        note.addEventListener("click", function (event) {
+            if (connectMode === true) {
+                event.stopPropagation();
+                handleBoardObjectConnectionClick(note);
+                return;
+            }
+
+            if (event.shiftKey === true) {
+                event.stopPropagation();
+                toggleGroupSelection(note);
+                return;
+            }
+
+            clearGroupSelection();
+            selectActiveNote(note);
+        });
+
+      const noteTitle = note.querySelector(".note-title");
+      const noteText = note.querySelector(".note-text");
+      const noteColor = note.querySelector(".note-color");
+      const deleteBtn = note.querySelector(".delete-note-btn");
+
+      const pinBtn = note.querySelector(".pin-object-btn");
+
+        note.dataset.pinned = isPinned === true ? "true" : "false";
+
+        updatePinButtonView(pinBtn, isPinned === true);
+      
+      noteTitle.value = title;
+      noteText.value = text;
+      noteColor.value = color;
+
+      noteTitle.addEventListener("input", function () {
+          saveNotes();
+      });
+
+      noteText.addEventListener("input", function () {
+          saveNotes();
+      });
+
+      noteColor.addEventListener("input", function () {
+          note.style.background = noteColor.value;
+          saveNotes();
+      });
+
+      noteTitle.addEventListener("mousedown", function (event) {
+          event.stopPropagation();
+      });
+
+        pinBtn.addEventListener("mousedown", function (event) {
+            event.stopPropagation();
+        });
+
+        pinBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+
+            rememberHistory();
+
+            toggleObjectPin(note);
+
+            saveNotes();
+        });
+
+      noteColor.addEventListener("mousedown", function (event) {
+          event.stopPropagation();
+          rememberHistory();
+      });
+
+      deleteBtn.addEventListener("mousedown", function (event) {
+          event.stopPropagation();
+
+          deleteBoardObject(note);
+      });
+
+    deleteBtn.addEventListener("click", function () {
+        rememberHistory();
+        const noteId = Number(note.dataset.id);
+        removeObjectFromGroups(noteId);
+
+        connections = connections.filter(function (connection) {
+        return connection.from !== noteId && connection.to !== noteId;
+        });
+
+        if (activeNoteId === noteId) {
+            activeNoteId = null;
+        }
+
+        note.remove();
+
+        drawConnections();
+        saveNotes();
+    });
+    };
+
+    function createBoardImage(id, src, x, y, width, height, zIndex) {
+        const imageBox = document.createElement("div");
+
+        imageBox.className = "board-image";
+        imageBox.dataset.id = id;
+        imageBox.dataset.ratio = width / height;
+
+        imageBox.innerHTML = `
+            <img src="${src}">
+            <button class="delete-image-btn">×</button>
+            <div class="resize-handle"></div>
+        `;
+
+        imageBox.style.left = x + "px";
+        imageBox.style.top = y + "px";
+        imageBox.style.width = width + "px";
+        imageBox.style.height = height + "px";
+        const imageZIndex = zIndex !== undefined ? zIndex : topZIndex;
+
+        imageBox.style.zIndex = imageZIndex;
+
+        topZIndex = Math.max(topZIndex, imageZIndex + 1);
+
+        workspace.appendChild(imageBox);
+
+        makeBoardImageDraggable(imageBox);
+        makeNoteResizable(imageBox);
+
+        imageBox.addEventListener("click", function (event) {
+            if (connectMode === true) {
+                event.stopPropagation();
+                handleBoardObjectConnectionClick(imageBox);
+                return;
+            }
+
+            if (event.shiftKey === true) {
+                event.stopPropagation();
+                toggleGroupSelection(imageBox);
+                return;
+            }
+
+            clearGroupSelection();
+            selectActiveNote(imageBox);
+        });
+
+        const deleteImageBtn = imageBox.querySelector(".delete-image-btn");
+
+        deleteImageBtn.addEventListener("mousedown", function (event) {
+            event.stopPropagation();
+
+            deleteBoardObject(imageWrapper);
+
+            rememberHistory();
+        });
+
+        deleteImageBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+
+            const imageId = Number(imageBox.dataset.id);
+            removeObjectFromGroups(imageId);
+
+            connections = connections.filter(function (connection) {
+                return connection.from !== imageId && connection.to !== imageId;
+            });
+
+            if (activeNoteId === imageId) {
+                activeNoteId = null;
+            }
+
+            imageBox.remove();
+
+            drawConnections();
+            saveNotes();
+        });
+    }
+
+    function createDrawingSheet(id,title, source, x, y, width, height, zIndex, isPinned) {
+        const sheet = document.createElement("div");
+
+        sheet.className = "drawing-sheet";
+        sheet.dataset.id = id;
+
+        sheet.innerHTML = `
+            <div class="drawing-sheet-header">
+                <input class="drawing-sheet-title">
+
+                <div class="drawing-sheet-actions">
+                    <button class="pin-sheet-btn" title="Добавить в якоря">⚓</button>
+                    <button class="drawing-tool-btn brush-tool-btn active">Кисть</button>
+                    <button class="drawing-tool-btn eraser-tool-btn">Ластик</button>
+                    <button class="clear-sheet-btn">Очистить</button>
+                    <button class="delete-sheet-btn">×</button>
+                </div>
+            </div>
+
+            <canvas class="drawing-canvas"></canvas>
+
+            <div class="resize-handle"></div>
+        `;
+
+        sheet.style.left = x + "px";
+        sheet.style.top = y + "px";
+        sheet.style.width = width + "px";
+        sheet.style.height = height + "px";
+
+        const sheetZIndex = zIndex !== undefined ? zIndex : topZIndex;
+
+        sheet.style.zIndex = sheetZIndex;
+
+        topZIndex = Math.max(topZIndex, sheetZIndex + 1);
+
+        workspace.appendChild(sheet);
+
+        sheet.dataset.tool = "brush";
+
+        sheet.dataset.pinned = isPinned === true ? "true" : "false";
+
+        const drawingTitle = sheet.querySelector(".drawing-sheet-title");
+
+        drawingTitle.value = title || "Лист";
+
+        drawingTitle.addEventListener("mousedown", function (event) {
+            event.stopPropagation();
+        });
+
+        drawingTitle.addEventListener("input", function () {
+            saveNotes();
+        });
+
+        resizeDrawingCanvasToSheet(sheet, false);
+
+        const canvas = sheet.querySelector(".drawing-canvas");
+
+        if (source !== null && source !== undefined && source !== "") {
+            loadDrawingCanvasSource(canvas, source);
+        } else {
+            fillDrawingCanvasWhite(canvas);
+        }
+
+        makeDrawingSheetDraggable(sheet);
+        makeNoteResizable(sheet);
+        makeDrawingCanvasDrawable(sheet);
+
+        sheet.addEventListener("click", function (event) {
+            if (connectMode === true) {
+                event.stopPropagation();
+                handleBoardObjectConnectionClick(sheet);
+                return;
+            }
+
+            if (event.shiftKey === true && typeof toggleGroupSelection === "function") {
+                event.stopPropagation();
+                toggleGroupSelection(sheet);
+                return;
+            }
+
+            if (typeof clearGroupSelection === "function") {
+                clearGroupSelection();
+            }
+
+            selectActiveNote(sheet);
+        });
+
+        const brushToolBtn = sheet.querySelector(".brush-tool-btn");
+        const eraserToolBtn = sheet.querySelector(".eraser-tool-btn");
+        const clearSheetBtn = sheet.querySelector(".clear-sheet-btn");
+        const deleteSheetBtn = sheet.querySelector(".delete-sheet-btn");
+
+        const pinSheetBtn = sheet.querySelector(".pin-sheet-btn");
+
+        updatePinButtonView(pinSheetBtn, isPinned === true);
+
+        pinSheetBtn.addEventListener("mousedown", function (event) {
+            event.stopPropagation();
+        });
+
+        pinSheetBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+
+            rememberHistory();
+
+            toggleObjectPin(sheet);
+
+            saveNotes();
+        });
+
+        brushToolBtn.addEventListener("mousedown", function (event) {
+            event.stopPropagation();
+        });
+
+        eraserToolBtn.addEventListener("mousedown", function (event) {
+            event.stopPropagation();
+        });
+
+        brushToolBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+
+            setDrawingSheetTool(sheet, "brush");
+        });
+
+        eraserToolBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+
+            setDrawingSheetTool(sheet, "eraser");
+        });
+
+        clearSheetBtn.addEventListener("mousedown", function (event) {
+            event.stopPropagation();
+        });
+
+        deleteSheetBtn.addEventListener("mousedown", function (event) {
+            event.stopPropagation();
+
+            deleteBoardObject(sheet);
+        });
+
+        clearSheetBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+
+            rememberHistory();
+
+            fillDrawingCanvasWhite(canvas);
+
+            saveNotes();
+        });
+
+        deleteSheetBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+
+            rememberHistory();
+
+            const sheetId = Number(sheet.dataset.id);
+
+            connections = connections.filter(function (connection) {
+                return connection.from !== sheetId && connection.to !== sheetId;
+            });
+
+            if (typeof removeObjectFromGroups === "function") {
+                removeObjectFromGroups(sheetId);
+            }
+
+            if (activeNoteId === sheetId) {
+                activeNoteId = null;
+            }
+
+            sheet.remove();
+
+            drawConnections();
+            saveNotes();
+        });
+    }
+
+    function createConnectionNode(id, x, y, zIndex) {
+        const node = document.createElement("div");
+
+        node.className = "connection-node";
+        node.dataset.id = id;
+
+        node.style.left = x + "px";
+        node.style.top = y + "px";
+
+        const nodeZIndex = zIndex !== undefined ? zIndex : topZIndex;
+
+        node.style.zIndex = nodeZIndex;
+
+        topZIndex = Math.max(topZIndex, nodeZIndex + 1);
+
+        workspace.appendChild(node);
+
+        makeConnectionNodeDraggable(node);
+
+        node.addEventListener("click", function (event) {
+            if (connectMode === true) {
+                event.stopPropagation();
+                handleBoardObjectConnectionClick(node);
+                return;
+            }
+
+            if (event.shiftKey === true) {
+                event.stopPropagation();
+                toggleGroupSelection(node);
+                return;
+            }
+
+            clearGroupSelection();
+            selectActiveNote(node);
+        });
+
+        node.addEventListener("contextmenu", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            deleteBoardObject(node);
+        });
+    }
+
+    function makeConnectionNodeDraggable(node) {
+        node.addEventListener("mousedown", function (event) {
+            if (event.button !== 0) {
+                return;
+            }
+
+            event.stopPropagation();
+
+            rememberHistory();
+
+            draggedNote = node;
+
+            const nodeId = Number(node.dataset.id);
+            const nodeGroup = getGroupByObjectId(nodeId);
+
+            draggedGroupObjects = [];
+
+            if (nodeGroup !== undefined) {
+                nodeGroup.objectIds.forEach(function (objectId) {
+                    const objectElement = getBoardObjectById(objectId);
+
+                    if (objectElement !== null) {
+                        draggedGroupObjects.push({
+                            element: objectElement,
+                            startX: parseFloat(objectElement.style.left),
+                            startY: parseFloat(objectElement.style.top)
+                        });
+                    }
+                });
+            }
+
+            if (draggedGroupObjects.length > 0) {
+                bringGroupToFront(draggedGroupObjects);
+            } else {
+                topZIndex = topZIndex + 1;
+                node.style.zIndex = topZIndex;
+            }
+
+            const mouseWorldX = (event.clientX - viewX) / scale;
+            const mouseWorldY = (event.clientY - viewY) / scale;
+
+            shiftX = mouseWorldX - node.offsetLeft;
+            shiftY = mouseWorldY - node.offsetTop;
+
+            node.style.cursor = "grabbing";
+        });
+    }
+
+    function compressImageDataUrl(sourceDataUrl, callback) {
+        const imageElement = new Image();
+
+        imageElement.addEventListener("load", function () {
+            const originalWidth = imageElement.naturalWidth;
+            const originalHeight = imageElement.naturalHeight;
+
+            let scaleRatio = Math.min(
+                compressedImageMaxWidth / originalWidth,
+                compressedImageMaxHeight / originalHeight,
+                1
+            );
+
+            const compressedWidth = Math.round(originalWidth * scaleRatio);
+            const compressedHeight = Math.round(originalHeight * scaleRatio);
+
+            const canvas = document.createElement("canvas");
+
+            canvas.width = compressedWidth;
+            canvas.height = compressedHeight;
+
+            const context = canvas.getContext("2d");
+
+            context.fillStyle = "#ffffff";
+            context.fillRect(0, 0, compressedWidth, compressedHeight);
+
+            context.drawImage(
+                imageElement,
+                0,
+                0,
+                compressedWidth,
+                compressedHeight
+            );
+
+            const compressedDataUrl = canvas.toDataURL(
+                "image/jpeg",
+                compressedImageQuality
+            );
+
+            callback({
+                src: compressedDataUrl,
+                width: compressedWidth,
+                height: compressedHeight
+            });
+        });
+
+        imageElement.addEventListener("error", function () {
+            callback({
+                src: sourceDataUrl,
+                width: 260,
+                height: 180
+            });
+        });
+
+        imageElement.src = sourceDataUrl;
+    }
+
+    function fillDrawingCanvasWhite(canvas) {
+        const context = canvas.getContext("2d");
+
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function loadDrawingCanvasSource(canvas, source) {
+        const imageElement = new Image();
+
+        imageElement.addEventListener("load", function () {
+            const context = canvas.getContext("2d");
+
+            fillDrawingCanvasWhite(canvas);
+
+            context.drawImage(
+                imageElement,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        });
+
+        imageElement.src = source;
+    }
+
+    function resizeDrawingCanvasToSheet(sheet, preserveDrawing) {
+        const canvas = sheet.querySelector(".drawing-canvas");
+
+        if (canvas === null) {
+            return;
+        }
+
+        let oldSource = null;
+
+        if (preserveDrawing === true && canvas.width > 0 && canvas.height > 0) {
+            oldSource = canvas.toDataURL("image/png");
+        }
+
+        const canvasWidth = Math.max(120, Math.round(sheet.offsetWidth));
+        const canvasHeight = Math.max(80, Math.round(sheet.offsetHeight - 36));
+
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        fillDrawingCanvasWhite(canvas);
+
+        if (oldSource !== null) {
+            loadDrawingCanvasSource(canvas, oldSource);
+        }
+    }
+
+    function getCanvasPoint(canvas, event) {
+        const canvasRect = canvas.getBoundingClientRect();
+
+        return {
+            x: (event.clientX - canvasRect.left) * canvas.width / canvasRect.width,
+            y: (event.clientY - canvasRect.top) * canvas.height / canvasRect.height
+        };
+    }
+
+    function handleBoardObjectConnectionClick (objectElement) {
+        const objectId = Number(objectElement.dataset.id);
+
+        if (firstSelectedNote === null) {
+            clearSelectedNotes();
+            firstSelectedNote = objectId;
+            objectElement.classList.add("selected");
+            return;
+        }
+
+        if (firstSelectedNote === objectId) {
+            firstSelectedNote = null;
+            clearSelectedNotes();
+            return;
+        }
+
+        rememberHistory();
+
+        connections.push({
+            from: firstSelectedNote,
+            to: objectId,
+            type: connectionTypeSelect ? connectionTypeSelect.value : "line",
+            color: connectionColorInput ? connectionColorInput.value : "#ff0000"
+        });
+
+        firstSelectedNote = null;
+        clearSelectedNotes();
+
+        drawConnections();
+        saveNotes();
+        showToast("Связь создана", "success");
+    }
+
+    function saveCurrentBoardMemory() {
+      const currentBoard = getCurrentBoard();
+
+      if (currentBoard === undefined) {
+        return;
+      }
+
+      const allNotes = document.querySelectorAll(".note");
+
+      const notesToSave = [];
+
+      const allImages = document.querySelectorAll(".board-image");
+
+      const imagesToSave = [];
+
+      allNotes.forEach(function (note) {
+        const id = Number(note.dataset.id);
+        const text = note.querySelector(".note-text").value;
+        const x = parseInt(note.style.left);
+        const y = parseInt(note.style.top);
+        const color = note.querySelector(".note-color").value;
+        const title = note.querySelector(".note-title").value;
+        const width = parseInt(note.style.width);
+        const height = parseInt(note.style.height);
+
+        notesToSave.push({
+          id: id,
+          text: text,
+          x: x,
+          y: y,
+          color: color,
+          title: title,
+          width: width,
+          height: height,
+          zIndex: parseInt(note.style.zIndex) || 1,
+          isPinned: note.dataset.pinned === "true"
+        });
+      });
+
+      allImages.forEach(function (imageBox) {
+        const imageElement = imageBox.querySelector("img");
+
+        imagesToSave.push({
+            id: Number(imageBox.dataset.id),
+            src: imageElement.src,
+            x: parseInt(imageBox.style.left),
+            y: parseInt(imageBox.style.top),
+            width: parseInt(imageBox.style.width),
+            height: parseInt(imageBox.style.height),
+            zIndex: parseInt(imageBox.style.zIndex) || 1
+        });
+    });
+
+    const allDrawingSheets = document.querySelectorAll(".drawing-sheet");
+
+    const drawingSheetsToSave = [];
+
+    allDrawingSheets.forEach(function (sheet) {
+        const canvas = sheet.querySelector(".drawing-canvas");
+        const titleInput = sheet.querySelector(".drawing-sheet-title");
+
+        drawingSheetsToSave.push({
+            id: Number(sheet.dataset.id),
+            title: titleInput ? titleInput.value : "Лист",
+            source: canvas.toDataURL("image/png"),
+            x: parseInt(sheet.style.left),
+            y: parseInt(sheet.style.top),
+            width: parseInt(sheet.style.width),
+            height: parseInt(sheet.style.height),
+            zIndex: parseInt(sheet.style.zIndex) || 1,
+            isPinned: sheet.dataset.pinned === "true"
+        });
+    });
+
+    const allConnectionNodes = document.querySelectorAll(".connection-node");
+
+    const connectionNodesToSave = [];
+
+    allConnectionNodes.forEach(function (node) {
+        connectionNodesToSave.push({
+            id: Number(node.dataset.id),
+            x: parseInt(node.style.left),
+            y: parseInt(node.style.top),
+            zIndex: parseInt(node.style.zIndex) || 1
+        });
+    });
+
+      currentBoard.noteCounter = noteCounter;
+      currentBoard.nextNoteX = nextNoteX;
+      currentBoard.nextNoteY = nextNoteY;
+      currentBoard.notes = notesToSave;
+      currentBoard.images = imagesToSave;
+      currentBoard.drawingSheets = drawingSheetsToSave;
+      currentBoard.drawingSheetCounter = drawingSheetCounter;
+      currentBoard.connectionNodes = connectionNodesToSave;
+      currentBoard.connectionNodeCounter = connectionNodeCounter;
+      currentBoard.imageCounter = imageCounter;
+      currentBoard.connections = connections;
+      currentBoard.groups = groups;
+      currentBoard.groupCounter = groupCounter;
+      currentBoard.viewX = viewX;
+      currentBoard.viewY = viewY;
+      currentBoard.scale = scale;
+    };
+
+    function saveAppDataOnly() {
+        const data = {
+            boards: boards,
+            currentBoardId: currentBoardId,
+            boardCounter: boardCounter
+        };
+
+        localStorage.setItem("ideaBoardAppData", JSON.stringify(data));
+    }
+
+    function saveNotes() {
+        saveCurrentBoardMemory();
+        saveAppDataOnly();
+        renderObjectsList();
+        updateEmptyState();
+        updateTopStatus();
+    }
+
+    function getAppSnapshot() {
+        saveCurrentBoardMemory();
+
+        return JSON.stringify({
+            boards: boards,
+            currentBoardId: currentBoardId,
+            boardCounter: boardCounter
+        });
+    }
+
+    function restoreAppSnapshot(snapshot) {
+        const data = JSON.parse(snapshot);
+
+        boards = data.boards || [];
+        currentBoardId = data.currentBoardId || 1;
+        boardCounter = data.boardCounter || 1;
+
+        saveAppDataOnly();
+        loadBoard(currentBoardId);
+    }
+
+    function rememberHistory() {
+        if (isRestoringHistory === true) {
+            return;
+        }
+
+        const snapshot = getAppSnapshot();
+
+        if (undoStack.length > 0 && undoStack[undoStack.length - 1] === snapshot) {
+            return;
+        }
+
+        undoStack.push(snapshot);
+
+        if (undoStack.length > maxHistorySteps) {
+            undoStack.shift();
+        }
+
+        redoStack = [];
+    }
+
+    function undoLastAction() {
+        if (undoStack.length === 0) {
+            return;
+        }
+
+        const currentSnapshot = getAppSnapshot();
+         
+        redoStack.push(currentSnapshot);
+
+        if (redoStack.length > maxHistorySteps) {
+            redoStack.shift();
+        }
+
+        const previousSnapshot = undoStack.pop();
+
+        isRestoringHistory = true;
+        restoreAppSnapshot(previousSnapshot);
+        isRestoringHistory = false;
+    }
+
+    function redoLastAction() {
+        if (redoStack.length === 0) {
+            return;
+        }
+
+        const currentSnapshot = getAppSnapshot();
+
+        undoStack.push(currentSnapshot);
+
+        if (undoStack.length > maxHistorySteps) {
+            undoStack.shift();
+        }
+
+        const nextSnapshot = redoStack.pop();
+
+        isRestoringHistory = true;
+        restoreAppSnapshot(nextSnapshot);
+        isRestoringHistory = false;
+    }
+
+    function loadBoard(boardId) {
+        const boardToLoad = boards.find( function (oneBoard) {
+            return oneBoard.id === boardId;
+        });
+
+        if (boardToLoad === undefined) {
+            return;
+        }
+
+        currentBoardId = boardId;
+
+        activeNoteId = null;
+
+        clearWorkspace();
+
+        noteCounter = boardToLoad.noteCounter || 1;
+        nextNoteX = boardToLoad.nextNoteX || 230;
+        nextNoteY = boardToLoad.nextNoteY || 170;
+
+        imageCounter = boardToLoad.imageCounter || 1;
+
+        drawingSheetCounter = boardToLoad.drawingSheetCounter || 1;
+
+        connectionNodeCounter = boardToLoad.connectionNodeCounter || 1;
+
+        connections = boardToLoad.connections || [];
+
+        groups = boardToLoad.groups || [];
+        groupCounter = boardToLoad.groupCounter || 1;
+        groupSelectedObjectIds = [];
+        draggedGroupObjects = [];
+
+        viewX = boardToLoad.viewX !== undefined ? boardToLoad.viewX : 0;
+        viewY = boardToLoad.viewY !== undefined ? boardToLoad.viewY : 0;
+        scale = boardToLoad.scale !== undefined ? boardToLoad.scale : 1;
+
+        topZIndex = 1;
+
+        updateWorkspacePosition();
+
+    boardToLoad.notes.forEach(function (noteData) {
+        const title = noteData.title || "Заголовок";
+        const text = noteData.text || "Идея";
+        const color = noteData.color || "#dbd5bf";
+        const width = noteData.width || 200;
+        const height = noteData.height || 200;
+
+    
+
+        createNote(
+            noteData.id,
+            title,
+            text,
+            noteData.x,
+            noteData.y,
+            color,
+            width,
+            height,
+            noteData.zIndex,
+            noteData.isPinned === true
+        );
+    });
+
+    const imagesToLoad = boardToLoad.images || [];
+    
+    imagesToLoad.forEach(function (imageData) {
+        createBoardImage(
+            imageData.id,
+            imageData.src,
+            imageData.x,
+            imageData.y,
+            imageData.width || 260,
+            imageData.height || 180,
+            imageData.zIndex
+        );
+    });
+
+    const drawingSheetsToLoad = boardToLoad.drawingSheets || [];
+
+    drawingSheetsToLoad.forEach(function (sheetData) {
+        createDrawingSheet(
+            sheetData.id,
+            sheetData.title || "Лист",
+            sheetData.source,
+            sheetData.x,
+            sheetData.y,
+            sheetData.width || 520,
+            sheetData.height || 360,
+            sheetData.zIndex,
+            sheetData.isPinned === true
+        );
+    });
+
+    const connectionNodesToLoad = boardToLoad.connectionNodes || [];
+
+    connectionNodesToLoad.forEach(function (nodeData) {
+        createConnectionNode(
+            nodeData.id,
+            nodeData.x,
+            nodeData.y,
+            nodeData.zIndex
+        );
+    });
+
+        drawConnections();
+        renderBoardsList();
+        renderObjectsList();
+        updateEmptyState();
+        updateTopStatus();
+    }
+
+    function renderBoardsList() {
+        boardsList.innerHTML = "";
+
+        boards.forEach(function (oneBoard) {
+            const boardItem = document.createElement("div");
+            const boardSelect = document.createElement("input")
+            const boardName = document.createElement("span");
+            const renameBoardBtn = document.createElement("button");
+            const deleteBoardBtn = document.createElement("button");
+
+            boardItem.className = "board-item";
+
+            boardSelect.className = "board-select";
+            boardSelect.type = "checkbox";
+            boardSelect.checked = selectedBoardIds.includes(oneBoard.id);
+
+            boardName.className = "board-name";
+            renameBoardBtn.className = "rename-board-btn";
+            deleteBoardBtn.className = "delete-board-btn";
+
+            boardName.textContent = oneBoard.name;
+            renameBoardBtn.textContent = "✎";
+            deleteBoardBtn.textContent = "×";
+
+            if (oneBoard.id === currentBoardId) {
+                boardItem.classList.add("active");
+            }
+
+            boardItem.addEventListener("click", function () {
+                if (oneBoard.id === currentBoardId) {
+                    return;
+                }
+
+                saveCurrentBoardMemory();
+
+                loadBoard(oneBoard.id);
+
+                saveAppDataOnly();
+            });
+
+            boardSelect.addEventListener("click", function (event) {
+                event.stopPropagation();
+            });
+
+            boardSelect.addEventListener("change", function () {
+                if (boardSelect.checked === true) {
+                    selectedBoardIds.push(oneBoard.id);
+                } else {
+                    selectedBoardIds = selectedBoardIds.filter(function (boardId) {
+                        return boardId !== oneBoard.id;
+                    });
+                }
+            });
+
+            renameBoardBtn.addEventListener("click", function (event) {
+                event.stopPropagation();
+
+                renameBoard(oneBoard.id);
+            });
+
+            deleteBoardBtn.addEventListener("click", function (event) {
+                event.stopPropagation();
+
+                deleteBoard(oneBoard.id);
+            });
+
+            boardItem.appendChild(boardSelect)
+            boardItem.appendChild(boardName);
+            boardItem.appendChild(renameBoardBtn);
+            boardItem.appendChild(deleteBoardBtn);
+
+            boardsList.appendChild(boardItem);
+        });
+    }
+
+    function loadNotes() {
+        const savedData = localStorage.getItem("ideaBoardAppData");
+
+        if (savedData === null) {
+            boards = [];
+
+            const mainBoard = createEmptyBoard("Главная доска");
+
+            boards.push(mainBoard);
+            currentBoardId = mainBoard.id;
+
+            loadBoard(mainBoard.id);
+            saveAppDataOnly();
+
+            return;
+        }
+
+        const data = JSON.parse(savedData);
+
+        boards = data.boards || [];
+        currentBoardId = data.currentBoardId || 1;
+        boardCounter = data.boardCounter || 1;
+
+        if (boards.length === 0) {
+            const mainBoard = createEmptyBoard("Главная доска");
+
+            boards.push(mainBoard);
+            currentBoardId = mainBoard.id;
+        }
+
+        loadBoard(currentBoardId);
+    }
+   
+    function isTypingNow(event) {
+        const tagName = event.target.tagName.toLowerCase();
+
+        return tagName === "input" || tagName === "textarea";
+    }
+
+    function exitConnectMode() {
+        connectMode = false;
+        firstSelectedNote = null;
+        clearSelectedNotes();
+        connectNoteBtn.classList.remove("active");
+    }
+
+    function openHelp() {
+        helpOverlay.classList.remove("hidden");
+    }
+
+    function closeHelp() {
+        helpOverlay.classList.add("hidden");
+    }
+
+    function applyTheme(themeName) {
+        document.body.dataset.theme = themeName;
+        localStorage.setItem("ideaBoardTheme", themeName);
+
+        if (themeSelect !== null) {
+            themeSelect.value = themeName;
+        }
+    }
+
+    function loadTheme() {
+        const savedTheme = localStorage.getItem("ideaBoardTheme") || "dark";
+
+        applyTheme(savedTheme);
+    }
+
+    function exportAppData() {
+        saveNotes();
+
+        const data = {
+            boards: boards,
+            currentBoardId: currentBoardId,
+            boardCounter: boardCounter
+        };
+
+        const jsonText = JSON.stringify(data, null, 2);
+
+        const file = new Blob([jsonText], {
+            type: "application/json"
+        });
+
+        const fileUrl = URL.createObjectURL(file);
+
+        const downloadLink = document.createElement("a");
+
+        downloadLink.href = fileUrl;
+        
+        let fileName = prompt("Как назвать файл?", "idea-board");
+
+        if (fileName === null) {
+            return;
+        }
+
+        fileName = fileName.trim();
+
+        if (fileName === "") {
+            fileName = "idea-board";
+        }
+
+        if (fileName.endsWith(".json") === false) {
+            fileName = fileName + ".json";
+        }
+
+        downloadLink.download = fileName;
+
+        downloadLink.click();
+
+        URL.revokeObjectURL(fileUrl);
+    }
+
+    function exportCurrentBoard () {
+        saveCurrentBoardMemory();
+
+        const currentBoard = getCurrentBoard();
+
+        if (currentBoard === undefined) {
+            alert("Не удалось найти текущую доску");
+            return;
+        }
+
+        const data = {
+            boards: [currentBoard],
+            currentBoardId: currentBoard.id,
+            boardCounter: currentBoard.id + 1
+        }
+        const jsonText = JSON.stringify(data, null, 2);
+
+        const file = new Blob([jsonText], {
+            type: "application/json"
+        });
+
+        const fileUrl = URL.createObjectURL(file);
+
+        const downloadLink = document.createElement("a");
+
+        downloadLink.href = fileUrl;
+        
+        let fileName = prompt("Как назвать файл?", currentBoard.name);
+
+        if (fileName === null) {
+            URL.revokeObjectURL(fileUrl)
+            return;
+        }
+
+        fileName = fileName.trim();
+
+        if (fileName === "") {
+            fileName = currentBoard.name || "idea-board";
+        }
+
+        fileName = fileName.replace(/[\\/:*?"<>|]/g, "-");
+
+        if (fileName.endsWith(".json") === false) {
+            fileName = fileName + ".json";
+        }
+
+        downloadLink.download = fileName;
+
+        downloadLink.click();
+
+        URL.revokeObjectURL(fileUrl);
+    }
+
+    function exportSelectedBoardsData() {
+        saveCurrentBoardMemory();
+
+        if (selectedBoardIds.length === 0) {
+            alert("Сначала выбери хотя бы одну доску.");
+            return;
+        }
+
+        const selectedBoards = boards.filter(function (oneBoard) {
+            return selectedBoardIds.includes(oneBoard.id);
+        });
+
+        if (selectedBoards.length === 0) {
+            alert("Выбранные доски не найдены.");
+            return;
+        }
+
+        let maxBoardId = 0;
+
+        selectedBoards.forEach(function (oneBoard) {
+            if (oneBoard.id > maxBoardId) {
+                maxBoardId = oneBoard.id;
+            }
+        });
+
+        const data = {
+            boards: selectedBoards,
+            currentBoardId: selectedBoards[0].id,
+            boardCounter: maxBoardId + 1
+        };
+
+        const jsonText = JSON.stringify(data, null, 2);
+
+        const file = new Blob([jsonText], {
+            type: "application/json"
+        });
+
+        const fileUrl = URL.createObjectURL(file);
+
+        const downloadLink = document.createElement("a");
+
+        downloadLink.href = fileUrl;
+
+        let fileName = prompt("Как назвать файл?", "selected-boards");
+
+        if (fileName === null) {
+            URL.revokeObjectURL(fileUrl);
+            return;
+        }
+
+        fileName = fileName.trim();
+
+        if (fileName === "") {
+            fileName = "selected-boards";
+        }
+
+        fileName = fileName.replace(/[\\/:*?"<>|]/g, "-");
+
+        if (fileName.endsWith(".json") === false) {
+            fileName = fileName + ".json";
+        }
+
+        downloadLink.download = fileName;
+
+        downloadLink.click();
+
+        URL.revokeObjectURL(fileUrl);
+    }
+
+    function importAppDataFromFile(file, mode) {
+        const reader = new FileReader();
+
+        reader.addEventListener("load", function () {
+            try {
+                const data = JSON.parse(reader.result);
+
+                if (Array.isArray(data.boards) === false) {
+                    alert("Это не файл Idea Board или он повреждён");
+                    return;
+                }
+
+                if (mode === "replace") {
+                    importWithReplace(data);
+                }
+
+                if (mode === "merge") {
+                    importWithMerge(data);
+                }
+
+            } catch (error) {
+                alert("Не удалось прочитать файл. Проверь, что это JSON-файл Idea Board");
+            }
+        });
+
+        reader.readAsText(file);
+    }
+
+    function importWithReplace(data) {
+        boards = data.boards;
+
+        if (boards.length === 0) {
+            const mainBoard = createEmptyBoard("Главная доска");
+            boards.push(mainBoard);
+            currentBoardId = mainBoard.id;
+        } else {
+            currentBoardId = data.currentBoardId || boards[0].id;
+        }
+
+        let maxBoardId = 0;
+
+        boards.forEach(function (oneBoard) {
+            if (oneBoard.id > maxBoardId) {
+                maxBoardId = oneBoard.id;
+            }
+        });
+
+        boardCounter = data.boardCounter || maxBoardId + 1;
+
+        if (boardCounter <= maxBoardId) {
+            boardCounter = maxBoardId + 1;
+        }
+
+        saveAppDataOnly();
+        loadBoard(currentBoardId);
+
+        alert("Проект импортирован с заменой.");
+    }
+
+    function importWithMerge(data) {
+        saveCurrentBoardMemory();
+
+        if (data.boards.length === 0) {
+            alert("В файле нет досок для импорта.");
+            return;
+        }
+
+        let firstImportedBoardId = null;
+
+        data.boards.forEach(function (importedBoard) {
+            const newBoard = JSON.parse(JSON.stringify(importedBoard));
+
+            newBoard.id = boardCounter;
+            boardCounter = boardCounter + 1;
+
+            boards.push(newBoard);
+
+            if (firstImportedBoardId === null) {
+                firstImportedBoardId = newBoard.id;
+            }
+        });
+
+        currentBoardId = firstImportedBoardId;
+
+        saveAppDataOnly();
+        loadBoard(currentBoardId);
+
+        alert("Доски добавлены из файла.");
+    }
+
+    function createEmptyBoard(name) {
+        const boardId = boardCounter;
+
+        boardCounter = boardCounter + 1;
+
+        return {
+            id: boardId,
+            name: name,
+            noteCounter: 1,
+            imageCounter: 1,
+            nextNoteX: 230,
+            nextNoteY: 170,
+            notes: [],
+            images: [],
+            connections: [],
+            groups: [],
+            groupCounter: 1,
+            viewX: 0,
+            viewY: 0,
+            scale: 1,
+            drawingSheets: [],
+            drawingSheetCounter: 1,
+            connectionNodes: [],
+            connectionNodeCounter: 1,
+        };
+    }
+
+    function getCurrentBoard() {
+        return boards.find(function (oneBoard) {
+            return oneBoard.id === currentBoardId;
+        });
+    }
+
+    function deleteBoard(boardId) {
+        if (boards.length <= 1) {
+            alert("Нельзя удалить единственную доску.");
+            return;
+        }
+
+        const boardIndex = boards.findIndex(function (oneBoard) {
+            return oneBoard.id === boardId;
+        });
+
+        if (boardIndex === -1) {
+            return;
+        }
+
+        const boardToDelete = boards[boardIndex];
+
+        const answer = confirm('Точно удалить доску "' + boardToDelete.name + '"?');
+
+        if (answer === false) {
+            return;
+        }
+
+        rememberHistory();
+
+        const isDeletingCurrentBoard = boardToDelete.id === currentBoardId;
+        
+        selectedBoardIds = selectedBoardIds.filter(function (selectedBoardId) {
+            return selectedBoardId !== boardId;
+        });
+
+        boards.splice(boardIndex, 1);
+
+        if (isDeletingCurrentBoard === true) {
+            let nextBoardIndex = boardIndex;
+
+            if (nextBoardIndex >= boards.length) {
+                nextBoardIndex = boards.length - 1;
+            }
+
+            currentBoardId = boards[nextBoardIndex].id;
+
+            loadBoard(currentBoardId);
+        } else {
+            renderBoardsList();
+        }
+
+        saveAppDataOnly();
+    }
+
+    function renameBoard(boardId) {
+        const boardToRename = boards.find(function (oneBoard) {
+            return oneBoard.id === boardId;
+        });
+
+        if (boardToRename === undefined) {
+            return;
+        }
+
+        const newName = prompt("Новое название доски:", boardToRename.name);
+
+        if (newName === null) {
+            return;
+        }
+
+        rememberHistory();
+
+        const trimmedName = newName.trim();
+
+        if (trimmedName === "") {
+            alert("Название доски не может быть пустым.");
+            return;
+        }
+
+        boardToRename.name = trimmedName;
+
+        saveAppDataOnly();
+        renderBoardsList();
+    }
+
+    function clearWorkspace() {
+        document.querySelectorAll(".note, .board-image, .drawing-sheet, .connection-node").forEach(function (objectElement) {
+            objectElement.remove();
+        });
+
+        linesLayer.innerHTML = "";
+        updateEmptyState();
+    }
+
+    if (themeSelect !== null) {
+        themeSelect.addEventListener("change", function () {
+            applyTheme(themeSelect.value);
+        });
+    }
+
+    if (objectSearchInput !== null) {
+        objectSearchInput.addEventListener("input", function () {
+            renderObjectsList();
+        });
+    }
+
+    addConnectionNodeBtn.addEventListener("click", function () {
+        rememberHistory();
+
+        const nodeId = -200000 - connectionNodeCounter;
+
+        connectionNodeCounter = connectionNodeCounter + 1;
+
+        const nodeSize = 30;
+
+        const x = (board.clientWidth / 2 - viewX) / scale - nodeSize / 2;
+        const y = (board.clientHeight / 2 - viewY) / scale - nodeSize / 2;
+
+        createConnectionNode(
+            nodeId,
+            x,
+            y
+        );
+
+        saveNotes();
+        showToast("Узел связи создан", "success");
+    });
+
+    openHelpBtn.addEventListener("click", function () {
+        openHelp();
+    });
+
+    closeHelpBtn.addEventListener("click", function () {
+        closeHelp();
+    });
+
+    helpOverlay.addEventListener("click", function (event) {
+        if (event.target === helpOverlay) {
+            closeHelp();
+        }
+    });
+
+    addNoteBtn.addEventListener("click", function () {
+      rememberHistory();
+
+      createNote(
+        noteCounter, 
+        "Заголовок", 
+        "Идея", 
+        nextNoteX, 
+        nextNoteY, 
+        "#dbd5bf",
+        200,
+        200
+      );
+
+      noteCounter = noteCounter + 1;
+
+      nextNoteX = nextNoteX + 30;
+      nextNoteY = nextNoteY + 30;
+
+      saveNotes();
+      showToast("Заметка создана", "success");
+    });
+
+    addDrawingSheetBtn.addEventListener("click", function () {
+        rememberHistory();
+
+        const sheetId = -100000 - drawingSheetCounter;
+
+        drawingSheetCounter = drawingSheetCounter + 1;
+
+        const defaultWidth = 520;
+        const defaultHeight = 360;
+
+        const x = (board.clientWidth / 2 - viewX) / scale - defaultWidth / 2;
+        const y = (board.clientHeight / 2 - viewY) / scale - defaultHeight / 2;
+
+        createDrawingSheet(
+            sheetId,
+            "Лист",
+            null,
+            x,
+            y,
+            defaultWidth,
+            defaultHeight
+        );
+
+        saveNotes();
+        showToast("Лист для рисования создан", "success");
+    });
+
+    connectNoteBtn.addEventListener("click", function () {
+        connectMode = !connectMode;
+
+        if (connectMode === true) {
+            firstSelectedNote = null;
+            connectNoteBtn.classList.add("active");
+            connectNoteBtn.textContent = "Режим связи включён";
+            hideObjectMiniToolbar();
+
+            showToast("Режим связи: выбери два объекта", "mode");
+        } else {
+            exitConnectMode();
+
+            showToast("Режим связи выключен", "warning");
+        }
+    });
+
+    clearAllBtn.addEventListener("click", function () {
+    const answer = confirm("Точно удалить все записки и связи на текущей доске?");
+
+    if (answer === false) {
+        return;
+    }
+
+    rememberHistory();
+
+    document.querySelectorAll(".note, .board-image, .drawing-sheet, .connection-node").forEach(function (objectElement) {
+        objectElement.remove();
+    });
+
+    connections = [];
+    firstSelectedNote = null;
+    connectMode = false;
+
+    noteCounter = 1;
+    nextNoteX = 230;
+    nextNoteY = 170;
+    topZIndex = 1;
+
+    imageCounter = 1;
+
+    drawingSheetCounter = 1;
+    connectionNodeCounter = 1;
+    groups = [];
+    groupCounter = 1;
+    groupSelectedObjectIds = [];
+    draggedGroupObjects = [];
+
+    viewX = 0;
+    viewY = 0;
+    scale = 1;
+    updateWorkspacePosition();
+
+    connectNoteBtn.classList.remove("active");
+    clearSelectedNotes();
+
+    linesLayer.innerHTML = "";
+
+    saveNotes();
+    });
+
+    togglePanelBtn.addEventListener("click", function () {
+        sidePanel.classList.toggle("open");
+    });
+
+    toggleBoardsPanelBtn.addEventListener("click", function () {
+        boardsPanel.classList.toggle("open");
+    });
+
+    addBoardBtn.addEventListener("click", function () {
+        saveCurrentBoardMemory();
+
+        const boardName = prompt("Название новой доски:", "Новая доска");
+
+        if (boardName === null) {
+            return;
+        }
+
+        const trimmedName = boardName.trim() || "Новая доска";
+
+        rememberHistory();
+
+        const newBoard = createEmptyBoard(trimmedName);
+
+        boards.push(newBoard);
+
+        loadBoard(newBoard.id);
+
+        saveAppDataOnly();
+    })
+
+    exportDataBtn.addEventListener("click", function () {
+        exportAppData();
+    });
+
+    exportCurrentBoardBtn.addEventListener("click", function () {
+        exportCurrentBoard();
+    });
+
+    exportSelectedBoardsBtn.addEventListener("click", function () {
+        exportSelectedBoardsData();
+    });
+
+    importDataBtn.addEventListener("click", function () {
+        const answer = confirm("Импорт с заменой удалит текущие доски и заменит их файлом. Продолжить?");
+
+        if (answer === false) {
+            return;
+        }
+
+        importMode = "replace";
+        importFileInput.click();
+    });
+
+    importMergeDataBtn.addEventListener("click", function () {
+        importMode = "merge";
+        importFileInput.click();
+    });
+
+    importFileInput.addEventListener("change", function () {
+        const file = importFileInput.files[0];
+
+        if (file === undefined) {
+            return;
+        }
+
+        importAppDataFromFile(file, importMode);
+
+        importFileInput.value = "";
+    });
+
+    zoomOutBtn.addEventListener("click", function () {
+        zoomAroundBoardCenter(scale / 1.15);
+    });
+
+    zoomInBtn.addEventListener("click", function () {
+        zoomAroundBoardCenter(scale * 1.15);
+    });
+
+    centerViewBtn.addEventListener("click", function () {
+        centerViewOnObjects();
+    });
+
+    board.addEventListener("mousedown", function (event) {
+        if (event.button !== 0) {
+            return;
+        }
+
+        if (event.target !== board && event.target !== workspace && event.target !== linesLayer) {
+            return;
+        }
+
+        isPanning = true;
+        wasPanningMoved = false;
+
+        panStartMouseX = event.clientX;
+        panStartMouseY = event.clientY;
+
+        panStartViewX = viewX;
+        panStartViewY = viewY;
+
+        board.style.cursor = "grabbing";
+    });
+
+    board.addEventListener("click", function (event) {
+        if (wasPanningMoved === true) {
+            wasPanningMoved = false;
+            return;
+        }
+
+        if (event.target !== board && event.target !== workspace && event.target !== linesLayer) {
+            return;
+        }
+
+        clearGroupSelection();
+        clearActiveNote();
+
+        if (connectMode === true) {
+            firstSelectedNote = null;
+            clearSelectedNotes();
+        }
+    });
+
+    board.addEventListener("wheel", function (event) {
+
+        event.preventDefault();
+
+        const oldScale = scale;
+
+        if (event.deltaY < 0) {
+            scale = scale * 1.1;
+        } else {
+            scale = scale / 1.1;
+        }
+
+        scale = clamp(scale, 0.3, 3);
+
+        const mouseX = event.clientX;
+        const mouseY = event.clientY;
+
+        const worldX = (mouseX - viewX) / oldScale;
+        const worldY = (mouseY - viewY) / oldScale;
+
+        viewX = mouseX - worldX * scale;
+        viewY = mouseY - worldY * scale;
+
+        updateWorkspacePosition();
+        saveNotes();
+    }, { passive: false });
+
+    board.addEventListener("contextmenu", function (event) {
+        const clickedInsideObject = event.target.closest && event.target.closest(".note, .board-image, .drawing-sheet");
+
+        if (clickedInsideObject !== null) {
+            return;
+        }
+
+        const boardRect = board.getBoundingClientRect();
+
+        const mouseX = event.clientX - boardRect.left;
+        const mouseY = event.clientY - boardRect.top;
+
+        const connectionIndex = findConnectionIndexNearPoint(mouseX, mouseY);
+
+        if (connectionIndex === -1) {
+            return;
+        }
+
+        event.preventDefault();
+
+        rememberHistory();
+
+        connections.splice(connectionIndex, 1);
+
+        drawConnections();
+        saveNotes();
+    });
+
+    groupObjectsBtn.addEventListener("click", function () {
+        groupSelectedObjects();
+    });
+
+    ungroupObjectsBtn.addEventListener("click", function () {
+        ungroupSelectedObjects();
+    });
+
+    document.addEventListener("keydown", function (event) {
+        const isCtrlOrCmd = event.ctrlKey === true || event.metaKey === true;
+        const key = event.key.toLowerCase();
+
+        if (isCtrlOrCmd === true && event.code === "KeyZ") {
+            if (isTypingNow(event) === true) {
+                return;
+            }
+
+            event.preventDefault();
+            undoLastAction();
+            return;
+        }
+
+        if (isCtrlOrCmd === true && event.code === "KeyX") {
+            if (isTypingNow(event) === true) {
+                return;
+            }
+
+            event.preventDefault();
+            redoLastAction();
+            return;
+        }
+
+        if (isCtrlOrCmd === true && event.code === "KeyC") {
+            if (isTypingNow(event) === true) {
+                return;
+            }
+
+            event.preventDefault();
+            copyActiveNote();
+            return;
+        }
+
+        if (isCtrlOrCmd === true && event.code === "KeyV") {
+            if (isTypingNow(event) === true) {
+                return;
+            }
+
+            if (copiedNoteData !== null) {
+                event.preventDefault();
+                pasteCopiedNote();
+                return;
+            }
+        }
+
+        if (isTypingNow(event) === true) {
+            return;
+        }
+
+        if (event.key === "Delete" || event.key === "Backspace") {
+            const activeObject = getBoardObjectById(activeNoteId);
+
+            if (activeObject !== null) {
+                event.preventDefault();
+                deleteBoardObject(activeObject);
+            }
+        }
+
+        if (key === "n" || key === "т") {
+            addNoteBtn.click();
+            return;
+        }
+
+        if (key === "l" || key === "д") {
+            addDrawingSheetBtn.click();
+            return;
+        }
+
+        if (key === "c" || key === "с") {
+            connectNoteBtn.click();
+            return;
+        }
+
+        if (key === "g" || key === "п") {
+            groupObjectsBtn.click();
+            return;
+        }
+
+        if (key === "u" || key === "г") {
+            ungroupObjectsBtn.click();
+            return;
+        }
+
+        if (event.key === "1") {
+            const activeSheet = getActiveDrawingSheet();
+
+            if (activeSheet !== null) {
+                setDrawingSheetTool(activeSheet, "brush");
+            }
+
+            return;
+        }
+
+        if (event.key === "2") {
+            const activeSheet = getActiveDrawingSheet();
+
+            if (activeSheet !== null) {
+                setDrawingSheetTool(activeSheet, "eraser");
+            }
+
+            return;
+        }
+
+        if (key === "r" || key === "к") {
+            clearActiveDrawingSheet();
+            return;
+        }
+
+        if (key === "h" || key === "р") {
+            openHelp();
+            return;
+        }
+
+        if (event.key === "Escape") {
+            if (helpOverlay.classList.contains("hidden") === false) {
+                closeHelp();
+                return;
+            }
+
+            exitConnectMode();
+            clearActiveNote();
+            clearGroupSelection();
+            return;
+        }
+
+        if (key === "b" || key === "и") {
+            sidePanel.classList.toggle("open");
+            return;
+        }
+
+        if (key === "d" || key === "в") {
+            boardsPanel.classList.toggle("open");
+            return;
+        }
+    });
+
+    document.addEventListener("paste", function (event) {
+        if (isTypingNow(event) === true) {
+            return;
+        }
+
+        const items = event.clipboardData.items;
+
+        for (let i = 0; i < items.length; i = i + 1) {
+            const item = items[i];
+
+            if (item.kind === "file" && item.type.startsWith("image/")) {
+                event.preventDefault();
+
+                const file = item.getAsFile();
+
+                const reader = new FileReader();
+
+                reader.addEventListener("load", function () {
+                    compressImageDataUrl(reader.result, function (compressedImage) {
+                        const imageId = -imageCounter;
+
+                        imageCounter = imageCounter + 1;
+
+                        const defaultWidth = 260;
+                        const defaultHeight = defaultWidth * compressedImage.height / compressedImage.width;
+
+                        const x = (board.clientWidth / 2 - viewX) / scale - defaultWidth / 2;
+                        const y = (board.clientHeight / 2 - viewY) / scale - defaultHeight / 2;
+
+                        rememberHistory();
+
+                        createBoardImage(
+                            imageId,
+                            compressedImage.src,
+                            x,
+                            y,
+                            defaultWidth,
+                            defaultHeight
+                        );
+
+                        saveNotes();
+                    });
+                });
+
+                reader.readAsDataURL(file);
+
+                return;
+            }
+        }
+
+        if (copiedNoteData !== null) {
+            event.preventDefault();
+            pasteCopiedNote();
+        }
+    });
+
+    function makeNoteDraggable(note){
+      const noteHeader = note.querySelector(".note-header");
+
+      noteHeader.addEventListener("mousedown", function (event) {
+        if (event.button !== 0) {
+            return;
+        }
+
+        rememberHistory();
+
+        draggedNote = note;
+
+        const noteId = Number(note.dataset.id);
+        const noteGroup = getGroupByObjectId(noteId);
+
+        draggedGroupObjects = [];
+
+        if (noteGroup !== undefined) {
+            noteGroup.objectIds.forEach(function (objectId) {
+                const objectElement = getBoardObjectById(objectId);
+
+                if (objectElement !== null) {
+                    draggedGroupObjects.push({
+                        element: objectElement,
+                        startX: parseFloat(objectElement.style.left),
+                        startY: parseFloat(objectElement.style.top)
+                    });
+                }
+            });
+        }
+
+        if (draggedGroupObjects.length > 0) {
+            bringGroupToFront(draggedGroupObjects);
+        } else {
+            topZIndex = topZIndex + 1;
+            note.style.zIndex = topZIndex;
+        }
+
+        const mouseWorldX = (event.clientX - viewX) / scale;
+        const mouseWorldY = (event.clientY - viewY) / scale;
+
+        shiftX = mouseWorldX - note.offsetLeft;
+        shiftY = mouseWorldY - note.offsetTop;
+
+        noteHeader.style.cursor = "grabbing";
+      });
+    };
+
+    function makeBoardImageDraggable(imageBox) {
+        imageBox.addEventListener("mousedown", function (event) {
+            if (event.button !== 0) {
+                return;
+            }
+
+            if (event.target.closest(".resize-handle") !== null) {
+                return;
+            }
+
+            if (event.target.closest(".delete-image-btn") !== null) {
+                return;
+            }
+
+            rememberHistory();
+
+            draggedNote = imageBox;
+
+            const imageId = Number(imageBox.dataset.id);
+            const imageGroup = getGroupByObjectId(imageId);
+
+            draggedGroupObjects = [];
+
+            if (imageGroup !== undefined) {
+                imageGroup.objectIds.forEach(function (objectId) {
+                    const objectElement = getBoardObjectById(objectId);
+
+                    if (objectElement !== null) {
+                        draggedGroupObjects.push({
+                            element: objectElement,
+                            startX: parseFloat(objectElement.style.left),
+                            startY: parseFloat(objectElement.style.top)
+                        });
+                    }
+                });
+            }
+
+            if (draggedGroupObjects.length > 0) {
+                bringGroupToFront(draggedGroupObjects);
+            } else {
+                topZIndex = topZIndex + 1;
+                imageBox.style.zIndex = topZIndex;
+            }
+
+            const mouseWorldX = (event.clientX - viewX) / scale;
+            const mouseWorldY = (event.clientY - viewY) / scale;
+
+            shiftX = mouseWorldX - imageBox.offsetLeft;
+            shiftY = mouseWorldY - imageBox.offsetTop;
+
+            imageBox.style.cursor = "grabbing";
+
+            event.stopPropagation();
+        });
+    }
+
+    function makeNoteResizable(note) {
+        const resizeHandle = note.querySelector(".resize-handle");
+
+        resizeHandle.addEventListener("mousedown", function (event) {
+            event.stopPropagation();
+
+            rememberHistory();
+
+            resizingNote = note;
+
+            startMouseX = event.clientX;
+            startMouseY = event.clientY;
+
+            startWidth = note.offsetWidth;
+            startHeight = note.offsetHeight;
+
+            topZIndex = topZIndex + 1;
+            note.style.zIndex = topZIndex;
+
+            document.body.style.cursor = "nwse-resize";
+        });
+    }
+
+    function makeDrawingCanvasDrawable(sheet) {
+        const canvas = sheet.querySelector(".drawing-canvas");
+        const context = canvas.getContext("2d");
+
+        let isDrawing = false;
+        let lastPoint = null;
+
+        canvas.addEventListener("mousedown", function (event) {
+            if (event.button !== 0) {
+                return;
+            }
+
+            if (connectMode === true) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            rememberHistory();
+
+            isDrawing = true;
+
+            lastPoint = getCanvasPoint(canvas, event);
+
+            context.beginPath();
+            context.moveTo(lastPoint.x, lastPoint.y);
+        });
+
+        canvas.addEventListener("mousemove", function (event) {
+            if (isDrawing === false) {
+                return;
+            }
+
+            const currentPoint = getCanvasPoint(canvas, event);
+
+            const currentTool = sheet.dataset.tool || "brush";
+
+            if (currentTool === "eraser") {
+                context.strokeStyle = "#ffffff";
+                context.lineWidth = 22;
+            } else {
+                context.strokeStyle = "#1f1f1f";
+                context.lineWidth = 3;
+            }
+
+            context.lineCap = "round";
+            context.lineJoin = "round";
+
+            context.lineTo(currentPoint.x, currentPoint.y);
+            context.stroke();
+
+            lastPoint = currentPoint;
+        });
+
+        document.addEventListener("mouseup", function () {
+            if (isDrawing === false) {
+                return;
+            }
+
+            isDrawing = false;
+            lastPoint = null;
+
+            saveNotes();
+        });
+    }
+
+    function makeDrawingSheetDraggable(sheet) {
+        const sheetHeader = sheet.querySelector(".drawing-sheet-header");
+
+        sheetHeader.addEventListener("mousedown", function (event) {
+            if (event.button !== 0) {
+                return;
+            }
+
+            if (event.target.closest(".drawing-sheet-title") !== null) {
+                return;
+            }
+
+            if (event.target.closest(".drawing-sheet-actions") !== null) {
+                return;
+            }
+
+            event.stopPropagation();
+
+            rememberHistory();
+
+            draggedNote = sheet;
+
+            const sheetId = Number(sheet.dataset.id);
+            const sheetGroup = getGroupByObjectId(sheetId);
+
+            draggedGroupObjects = [];
+
+            if (sheetGroup !== undefined) {
+                sheetGroup.objectIds.forEach(function (objectId) {
+                    const objectElement = getBoardObjectById(objectId);
+
+                    if (objectElement !== null) {
+                        draggedGroupObjects.push({
+                            element: objectElement,
+                            startX: parseFloat(objectElement.style.left),
+                            startY: parseFloat(objectElement.style.top)
+                        });
+                    }
+                });
+            }
+
+            if (draggedGroupObjects.length > 0) {
+                bringGroupToFront(draggedGroupObjects);
+            } else {
+                topZIndex = topZIndex + 1;
+                sheet.style.zIndex = topZIndex;
+            }
+
+            const mouseWorldX = (event.clientX - viewX) / scale;
+            const mouseWorldY = (event.clientY - viewY) / scale;
+
+            shiftX = mouseWorldX - sheet.offsetLeft;
+            shiftY = mouseWorldY - sheet.offsetTop;
+
+            sheetHeader.style.cursor = "grabbing";
+        });
+    }
+
+    document.addEventListener("mousemove", function (event){
+        if (draggedConnectionEndpoint !== null) {
+            const boardRect = board.getBoundingClientRect();
+
+            const mouseBoardX = event.clientX - boardRect.left;
+            const mouseBoardY = event.clientY - boardRect.top;
+
+            setConnectionEndpointFromBoardPoint(
+                draggedConnectionEndpoint.index,
+                draggedConnectionEndpoint.endpoint,
+                mouseBoardX,
+                mouseBoardY
+            );
+
+            drawConnections();
+
+            return;
+        }
+
+        if (draggedCurveControlIndex !== null) {
+            const boardRect = board.getBoundingClientRect();
+
+            const mouseBoardX = event.clientX - boardRect.left;
+            const mouseBoardY = event.clientY - boardRect.top;
+
+            setCurveControlFromMiddlePoint(
+                draggedCurveControlIndex,
+                mouseBoardX,
+                mouseBoardY
+            );
+
+            drawConnections();
+
+            return;
+        }
+
+        if (resizingNote !== null) {
+            const newWidth = startWidth + (event.clientX - startMouseX) / scale;
+            const newHeight = startHeight + (event.clientY - startMouseY) / scale;
+
+            if (resizingNote.classList.contains("board-image") === true) {
+                const imageRatio = Number(resizingNote.dataset.ratio) || startWidth / startHeight;
+
+                let imageWidth = Math.max(100, newWidth);
+                let imageHeight = imageWidth / imageRatio;
+
+                if (imageHeight < 80) {
+                    imageHeight = 80;
+                    imageWidth = imageHeight * imageRatio;
+                }
+
+                resizingNote.style.width = imageWidth + "px";
+                resizingNote.style.height = imageHeight + "px";
+
+                drawConnections();
+                return;
+            }
+
+            resizingNote.style.width = Math.max(150, newWidth) + "px";
+            resizingNote.style.height = Math.max(150, newHeight) + "px";
+
+            drawConnections();
+            return;
+        }
+
+        if (isPanning === true) {
+            const moveX = event.clientX - panStartMouseX;
+            const moveY = event.clientY - panStartMouseY;
+
+            if (Math.abs(moveX) > 3 || Math.abs(moveY) > 3) {
+                wasPanningMoved = true;
+            }
+
+            viewX = panStartViewX + moveX;
+            viewY = panStartViewY + moveY;
+
+            updateWorkspacePosition();
+
+            return;
+        }
+
+      if (draggedNote === null) {
+        return;
+      };
+
+      const mouseWorldX = (event.clientX - viewX) / scale;
+      const mouseWorldY = (event.clientY - viewY) / scale;
+
+        const newPrimaryX = mouseWorldX - shiftX;
+        const newPrimaryY = mouseWorldY - shiftY;
+
+        if (draggedGroupObjects.length > 0) {
+            const primaryObject = draggedGroupObjects.find(function (groupObject) {
+                return groupObject.element === draggedNote;
+            });
+
+            if (primaryObject !== undefined) {
+                const deltaX = newPrimaryX - primaryObject.startX;
+                const deltaY = newPrimaryY - primaryObject.startY;
+
+                draggedGroupObjects.forEach(function (groupObject) {
+                    groupObject.element.style.left = groupObject.startX + deltaX + "px";
+                    groupObject.element.style.top = groupObject.startY + deltaY + "px";
+                });
+            }
+        } else {
+            draggedNote.style.left = newPrimaryX + "px";
+            draggedNote.style.top = newPrimaryY + "px";
+        }
+
+        drawConnections();
+    });
+
+    document.addEventListener("mouseup", function (){
+        if (draggedConnectionEndpoint !== null) {
+            draggedConnectionEndpoint = null;
+
+            document.body.style.cursor = "default";
+
+            saveNotes();
+
+            return;
+        }
+
+        if (draggedCurveControlIndex !== null) {
+            draggedCurveControlIndex = null;
+
+            document.body.style.cursor = "default";
+
+            saveNotes();
+
+            return;
+        }
+
+        if (isPanning === true) {
+            isPanning = false;
+            board.style.cursor = "default";
+            saveNotes();
+        } 
+
+        if (resizingNote !== null) {
+            if (resizingNote.classList.contains("drawing-sheet") === true) {
+                resizeDrawingCanvasToSheet(resizingNote, true);
+            }
+
+            resizingNote = null;
+            document.body.style.cursor = "default";
+            saveNotes();
+        }
+        
+        if (draggedNote !== null) {
+            const noteHeader = draggedNote.querySelector(".note-header");
+            const sheetHeader = draggedNote.querySelector(".drawing-sheet-header");
+
+            if (noteHeader !== null) {
+                noteHeader.style.cursor = "grab";
+            }
+
+            if (sheetHeader !== null) {
+                sheetHeader.style.cursor = "grab";
+            }
+
+            draggedNote.style.cursor = "default";
+
+            saveNotes();
+        }
+
+        draggedNote = null;
+        draggedGroupObjects = [];
+    });
+
+    function clearSelectedNotes() {
+        const selectedObjects = document.querySelectorAll(".note.selected, .board-image.selected, .drawing-sheet.selected, .connection-node.selected");
+        selectedObjects.forEach(function (objectElement) {
+            objectElement.classList.remove("selected");
+        });
+    }
+
+    function toggleGroupSelection(objectElement) {
+        const objectId = Number(objectElement.dataset.id);
+
+        if (groupSelectedObjectIds.includes(objectId) === true) {
+            groupSelectedObjectIds = groupSelectedObjectIds.filter(function (selectedId) {
+                return selectedId !== objectId;
+            });
+
+            objectElement.classList.remove("group-selected");
+            return;
+        }
+
+        groupSelectedObjectIds.push(objectId);
+        objectElement.classList.add("group-selected");
+    }
+
+    function clearGroupSelection() {
+        const selectedObjects = document.querySelectorAll(".note.group-selected, .board-image.group-selected, .drawing-sheet.group-selected, .connection-node.group-selected");
+        selectedObjects.forEach(function (objectElement) {
+            objectElement.classList.remove("group-selected");
+        });
+
+        groupSelectedObjectIds = [];
+    }
+
+    function getGroupByObjectId(objectId) {
+        return groups.find(function (oneGroup) {
+            return oneGroup.objectIds.includes(objectId);
+        });
+    }
+
+    function removeObjectFromGroups(objectId) {
+        groups = groups.map(function (oneGroup) {
+            return {
+                id: oneGroup.id,
+                objectIds: oneGroup.objectIds.filter(function (groupObjectId) {
+                    return groupObjectId !== objectId;
+                })
+            };
+        }).filter(function (oneGroup) {
+            return oneGroup.objectIds.length > 1;
+        });
+    }
+
+    function groupSelectedObjects() {
+        if (groupSelectedObjectIds.length < 2) {
+            alert("Выбери хотя бы 2 объекта через Shift + клик.");
+            return;
+        }
+
+        rememberHistory();
+
+        groups = groups.map(function (oneGroup) {
+            return {
+                id: oneGroup.id,
+                objectIds: oneGroup.objectIds.filter(function (objectId) {
+                    return groupSelectedObjectIds.includes(objectId) === false;
+                })
+            };
+        }).filter(function (oneGroup) {
+            return oneGroup.objectIds.length > 1;
+        });
+
+        groups.push({
+            id: groupCounter,
+            objectIds: [...groupSelectedObjectIds]
+        });
+
+        groupCounter = groupCounter + 1;
+
+        clearGroupSelection();
+        saveNotes();
+    }
+
+    function ungroupSelectedObjects() {
+        let idsToUngroup = [];
+
+        if (groupSelectedObjectIds.length > 0) {
+            idsToUngroup = [...groupSelectedObjectIds];
+        } else if (activeNoteId !== null) {
+            idsToUngroup = [activeNoteId];
+        }
+
+        if (idsToUngroup.length === 0) {
+            alert("Выбери объект из группы.");
+            return;
+        }
+
+        const oldGroupsLength = groups.length;
+
+        rememberHistory();
+
+        groups = groups.filter(function (oneGroup) {
+            return idsToUngroup.some(function (objectId) {
+                return oneGroup.objectIds.includes(objectId);
+            }) === false;
+        });
+
+        if (groups.length === oldGroupsLength) {
+            alert("Этот объект не находится в группе.");
+        }
+
+        clearGroupSelection();
+        saveNotes();
+    }
+
+    function bringGroupToFront(groupObjects) {
+        if (groupObjects.length === 0) {
+            return;
+        }
+
+        const sortedGroupObjects = [...groupObjects].sort(function (a, b) {
+            const zIndexA = parseInt(a.element.style.zIndex) || 1;
+            const zIndexB = parseInt(b.element.style.zIndex) || 1;
+
+            return zIndexA - zIndexB;
+        });
+
+        sortedGroupObjects.forEach(function (groupObject) {
+            groupObject.element.style.zIndex = topZIndex;
+            topZIndex = topZIndex + 1;
+        });
+    }
+
+    function selectActiveNote(note) {
+        clearActiveNote();
+
+        activeNoteId = Number(note.dataset.id);
+
+        note.classList.add("active-note");
+    }
+
+    function clearActiveNote() {
+        const activeObjects = document.querySelectorAll(".note.active-note, .board-image.active-note, .drawing-sheet.active-note, .connection-node.active-note");
+        activeObjects.forEach(function (objectElement) {
+            objectElement.classList.remove("active-note");
+        });
+
+        activeNoteId = null;
+    }
+
+    function updatePinButtonView(pinButton, isPinned) {
+        if (pinButton === null) {
+            return;
+        }
+
+        if (isPinned === true) {
+            pinButton.classList.add("pinned");
+            pinButton.title = "Убрать из якорей";
+        } else {
+            pinButton.classList.remove("pinned");
+            pinButton.title = "Добавить в якоря";
+        }
+    }
+
+    function toggleObjectPin(objectElement) {
+        const isPinnedNow = objectElement.dataset.pinned === "true";
+        const nextPinnedState = isPinnedNow === false;
+
+        objectElement.dataset.pinned = nextPinnedState === true ? "true" : "false";
+
+        const pinButton = objectElement.querySelector(".pin-object-btn, .pin-sheet-btn");
+
+        updatePinButtonView(pinButton, nextPinnedState);
+
+        renderObjectsList();
+    }
+
+    function getActiveObject() {
+        if (activeNoteId === null) {
+            return null;
+        }
+
+        return getBoardObjectById(activeNoteId);
+    }
+
+    function getObjectListData(objectElement) {
+        const objectId = Number(objectElement.dataset.id);
+
+        if (objectElement.classList.contains("note") === true) {
+            const titleInput = objectElement.querySelector(".note-title");
+
+            const title = titleInput && titleInput.value.trim() !== ""
+                ? titleInput.value.trim()
+                : "Без названия";
+
+            return {
+                id: objectId,
+                title: title,
+                type: "Заметка",
+                searchText: title.toLowerCase()
+            };
+        }
+
+        if (objectElement.classList.contains("drawing-sheet") === true) {
+            const titleInput = objectElement.querySelector(".drawing-sheet-title");
+
+            const title = titleInput && titleInput.value.trim() !== ""
+                ? titleInput.value.trim()
+                : "Лист";
+
+            return {
+                id: objectId,
+                title: title,
+                type: "Лист для рисования",
+                searchText: title.toLowerCase()
+            };
+        }
+
+        return null;
+    }
+
+    function renderObjectsList() {
+        if (objectsList === null) {
+            return;
+        }
+
+        const query = objectSearchInput !== null
+            ? objectSearchInput.value.trim().toLowerCase()
+            : "";
+
+        objectsList.innerHTML = "";
+
+        let objectElements;
+
+        if (query === "") {
+            objectElements = document.querySelectorAll(
+                '.note[data-pinned="true"], .drawing-sheet[data-pinned="true"]'
+            );
+        } else {
+            objectElements = document.querySelectorAll(
+                ".note, .drawing-sheet"
+            );
+        }
+
+        const objectDataList = [];
+
+        objectElements.forEach(function (objectElement) {
+            const objectData = getObjectListData(objectElement);
+
+            if (objectData !== null) {
+                objectData.isPinned = objectElement.dataset.pinned === "true";
+                objectDataList.push(objectData);
+            }
+        });
+
+        const filteredObjects = objectDataList.filter(function (objectData) {
+            if (query === "") {
+                return true;
+            }
+
+            return objectData.searchText.includes(query);
+        });
+
+        if (filteredObjects.length === 0) {
+            const emptyMessage = document.createElement("div");
+
+            emptyMessage.className = "object-list-empty";
+
+            if (query === "") {
+                emptyMessage.textContent = "Якорей пока нет. Нажми ⚓ на важной заметке или листе.";
+            } else {
+                emptyMessage.textContent = "На доске ничего не найдено.";
+            }
+
+            objectsList.appendChild(emptyMessage);
+            return;
+        }
+
+        filteredObjects.forEach(function (objectData) {
+            const objectButton = document.createElement("button");
+
+            objectButton.className = "object-list-item";
+            objectButton.type = "button";
+            objectButton.dataset.id = objectData.id;
+
+            const pinLabel = objectData.isPinned === true ? " · ⚓ якорь" : "";
+
+            objectButton.innerHTML = `
+                <span class="object-list-title">${objectData.title}</span>
+                <span class="object-list-type">${objectData.type}${pinLabel}</span>
+            `;
+
+            objectButton.addEventListener("click", function () {
+                focusObjectById(objectData.id);
+            });
+
+            objectsList.appendChild(objectButton);
+        });
+    }
+
+    function updateEmptyState() {
+        if (emptyState === null) {
+            return;
+        }
+
+        const objectsCount = document.querySelectorAll(
+            ".note, .board-image, .drawing-sheet, .connection-node"
+        ).length;
+
+        if (objectsCount === 0) {
+            emptyState.classList.remove("hidden");
+        } else {
+            emptyState.classList.add("hidden");
+        }
+    }
+
+    function focusObjectById(objectId) {
+        const objectElement = getBoardObjectById(objectId);
+
+        if (objectElement === null) {
+            renderObjectsList();
+            return;
+        }
+
+        const objectX = parseFloat(objectElement.style.left) || 0;
+        const objectY = parseFloat(objectElement.style.top) || 0;
+
+        const objectCenterX = objectX + objectElement.offsetWidth / 2;
+        const objectCenterY = objectY + objectElement.offsetHeight / 2;
+
+        viewX = board.clientWidth / 2 - objectCenterX * scale;
+        viewY = board.clientHeight / 2 - objectCenterY * scale;
+
+        updateWorkspacePosition();
+
+        clearGroupSelection();
+        selectActiveNote(objectElement);
+
+        saveNotes();
+    }
+
+    function getActiveDrawingSheet() {
+        const activeObject = getActiveObject();
+
+        if (activeObject === null) {
+            return null;
+        }
+
+        if (activeObject.classList.contains("drawing-sheet") === false) {
+            return null;
+        }
+
+        return activeObject;
+    }
+
+    function setDrawingSheetTool(sheet, tool) {
+        if (sheet === null) {
+            return;
+        }
+
+        const brushToolBtn = sheet.querySelector(".brush-tool-btn");
+        const eraserToolBtn = sheet.querySelector(".eraser-tool-btn");
+
+        sheet.dataset.tool = tool;
+
+        if (tool === "brush") {
+            if (brushToolBtn !== null) {
+                brushToolBtn.classList.add("active");
+            }
+
+            if (eraserToolBtn !== null) {
+                eraserToolBtn.classList.remove("active");
+            }
+        }
+
+        if (tool === "eraser") {
+            if (eraserToolBtn !== null) {
+                eraserToolBtn.classList.add("active");
+            }
+
+            if (brushToolBtn !== null) {
+                brushToolBtn.classList.remove("active");
+            }
+        }
+    }
+
+    function clearActiveDrawingSheet() {
+        const activeSheet = getActiveDrawingSheet();
+
+        if (activeSheet === null) {
+            alert("Сначала выбери лист.");
+            return;
+        }
+
+        const canvas = activeSheet.querySelector(".drawing-canvas");
+
+        if (canvas === null) {
+            return;
+        }
+
+        rememberHistory();
+
+        fillDrawingCanvasWhite(canvas);
+
+        saveNotes();
+    }
+
+    function copyActiveNote() {
+        if (activeNoteId === null) {
+            alert("Сначала выбери объект.");
+            return;
+        }
+
+        const activeObject = getBoardObjectById(activeNoteId);
+
+        if (activeObject === null) {
+            alert("Активный объект не найден.");
+            activeNoteId = null;
+            return;
+        }
+
+        if (activeObject.classList.contains("note") === true) {
+            copiedNoteData = {
+                type: "note",
+                title: activeObject.querySelector(".note-title").value,
+                text: activeObject.querySelector(".note-text").value,
+                x: parseInt(activeObject.style.left),
+                y: parseInt(activeObject.style.top),
+                color: activeObject.querySelector(".note-color").value,
+                width: parseInt(activeObject.style.width),
+                height: parseInt(activeObject.style.height)
+            };
+
+            return;
+        }
+
+        if (activeObject.classList.contains("board-image") === true) {
+            const imageElement = activeObject.querySelector("img");
+
+            copiedNoteData = {
+                type: "image",
+                src: imageElement.src,
+                x: parseInt(activeObject.style.left),
+                y: parseInt(activeObject.style.top),
+                width: parseInt(activeObject.style.width),
+                height: parseInt(activeObject.style.height)
+            };
+
+            return;
+        }
+
+        if (activeObject.classList.contains("drawing-sheet") === true) {
+            const canvas = activeObject.querySelector(".drawing-canvas");
+            const titleInput = activeObject.querySelector(".drawing-sheet-title");
+
+            copiedNoteData = {
+                type: "drawing-sheet",
+                title: titleInput ? titleInput.value : "Лист",
+                source: canvas.toDataURL("image/png"),
+                x: parseInt(activeObject.style.left),
+                y: parseInt(activeObject.style.top),
+                width: parseInt(activeObject.style.width),
+                height: parseInt(activeObject.style.height)
+            };
+
+            return;
+        }
+    }
+
+    function pasteCopiedNote() {
+        if (copiedNoteData === null) {
+            alert("Сначала скопируй объект.");
+            return;
+        }
+
+        rememberHistory();
+
+        const newX = copiedNoteData.x + 30;
+        const newY = copiedNoteData.y + 30;
+
+        if (copiedNoteData.type === "note") {
+            const newNoteId = noteCounter;
+
+            createNote(
+                newNoteId,
+                copiedNoteData.title,
+                copiedNoteData.text,
+                newX,
+                newY,
+                copiedNoteData.color,
+                copiedNoteData.width,
+                copiedNoteData.height
+            );
+
+            noteCounter = noteCounter + 1;
+
+            const newNote = getBoardObjectById(newNoteId);
+
+            if (newNote !== null) {
+                selectActiveNote(newNote);
+            }
+        }
+
+        if (copiedNoteData.type === "image") {
+            const newImageId = -imageCounter;
+
+            imageCounter = imageCounter + 1;
+
+            createBoardImage(
+                newImageId,
+                copiedNoteData.src,
+                newX,
+                newY,
+                copiedNoteData.width,
+                copiedNoteData.height
+            );
+
+            const newImage = getBoardObjectById(newImageId);
+
+            if (newImage !== null) {
+                selectActiveNote(newImage);
+            }
+        }
+
+        if (copiedNoteData.type === "drawing-sheet") {
+            const newSheetId = -100000 - drawingSheetCounter;
+
+            drawingSheetCounter = drawingSheetCounter + 1;
+
+            createDrawingSheet(
+                newSheetId,
+                copiedNoteData.title,
+                copiedNoteData.source,
+                newX,
+                newY,
+                copiedNoteData.width,
+                copiedNoteData.height
+            );
+
+            const newSheet = getBoardObjectById(newSheetId);
+
+            if (newSheet !== null) {
+                selectActiveNote(newSheet);
+            }
+        }
+
+        copiedNoteData.x = newX;
+        copiedNoteData.y = newY;
+
+        saveNotes();
+    }
+
+    function createArrowMarkers(connectionColor, markerSuffix) {
+        const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+
+        const arrowEndId = "arrowEnd-" + markerSuffix;
+        const arrowStartId = "arrowStart-" + markerSuffix;
+
+        const arrowEnd = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+        arrowEnd.setAttribute("id", arrowEndId);
+        arrowEnd.setAttribute("markerWidth", "10");
+        arrowEnd.setAttribute("markerHeight", "10");
+        arrowEnd.setAttribute("refX", "9");
+        arrowEnd.setAttribute("refY", "3");
+        arrowEnd.setAttribute("orient", "auto");
+        arrowEnd.setAttribute("markerUnits", "strokeWidth");
+
+        const arrowEndPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        arrowEndPath.setAttribute("d", "M0,0 L0,6 L9,3 z");
+        arrowEndPath.setAttribute("fill", connectionColor);
+
+        arrowEnd.appendChild(arrowEndPath);
+
+        const arrowStart = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+        arrowStart.setAttribute("id", arrowStartId);
+        arrowStart.setAttribute("markerWidth", "10");
+        arrowStart.setAttribute("markerHeight", "10");
+        arrowStart.setAttribute("refX", "0");
+        arrowStart.setAttribute("refY", "3");
+        arrowStart.setAttribute("orient", "auto");
+        arrowStart.setAttribute("markerUnits", "strokeWidth");
+
+        const arrowStartPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        arrowStartPath.setAttribute("d", "M9,0 L9,6 L0,3 z");
+        arrowStartPath.setAttribute("fill", connectionColor);
+
+        arrowStart.appendChild(arrowStartPath);
+
+        defs.appendChild(arrowEnd);
+        defs.appendChild(arrowStart);
+
+        linesLayer.appendChild(defs);
+    }
+    
+    function isCurvedConnectionType(connectionType) {
+        return connectionType === "curve" || connectionType.startsWith("curve-") === true;
+    }
+
+    function boardPointToWorld(pointX, pointY) {
+        return {
+            x: (pointX - viewX) / scale,
+            y: (pointY - viewY) / scale
+        };
+    }
+
+    function worldPointToBoard(pointX, pointY) {
+        return {
+            x: pointX * scale + viewX,
+            y: pointY * scale + viewY
+        };
+    }
+
+    function getQuadraticBezierPoint(pathData, t) {
+        const oneMinusT = 1 - t;
+
+        const x =
+            oneMinusT * oneMinusT * pathData.startX +
+            2 * oneMinusT * t * pathData.controlX +
+            t * t * pathData.endX;
+
+        const y =
+            oneMinusT * oneMinusT * pathData.startY +
+            2 * oneMinusT * t * pathData.controlY +
+            t * t * pathData.endY;
+
+        return {
+            x: x,
+            y: y
+        };
+    }
+
+    function getConnectionScreenPoints(connection) {
+        const fromObject = getBoardObjectById(connection.from);
+        const toObject = getBoardObjectById(connection.to);
+
+        if (fromObject === null || toObject === null) {
+            return null;
+        }
+
+        const boardRect = board.getBoundingClientRect();
+
+        const fromRect = fromObject.getBoundingClientRect();
+        const toRect = toObject.getBoundingClientRect();
+
+        const fromCenterX = fromRect.left - boardRect.left + fromRect.width / 2;
+        const fromCenterY = fromRect.top - boardRect.top + fromRect.height / 2;
+
+        const toCenterX = toRect.left - boardRect.left + toRect.width / 2;
+        const toCenterY = toRect.top - boardRect.top + toRect.height / 2;
+
+        let finalFromX;
+        let finalFromY;
+        let finalToX;
+        let finalToY;
+
+        if (fromObject.classList.contains("connection-node") === true) {
+            finalFromX = fromCenterX;
+            finalFromY = fromCenterY;
+        } else {
+            const fromPoint = getConnectionPointOnNote(fromRect, toCenterX, toCenterY, boardRect);
+            finalFromX = fromPoint.x;
+            finalFromY = fromPoint.y;
+        }
+
+        if (toObject.classList.contains("connection-node") === true) {
+            finalToX = toCenterX;
+            finalToY = toCenterY;
+        } else {
+            const toPoint = getConnectionPointOnNote(toRect, fromCenterX, fromCenterY, boardRect);
+            finalToX = toPoint.x;
+            finalToY = toPoint.y;
+        }
+
+        if (
+            fromObject.classList.contains("connection-node") === false &&
+            connection.startOffsetX !== undefined &&
+            connection.startOffsetY !== undefined
+        ) {
+            const fromLeft = parseFloat(fromObject.style.left) || 0;
+            const fromTop = parseFloat(fromObject.style.top) || 0;
+
+            const startWorldPoint = {
+                x: fromLeft + connection.startOffsetX,
+                y: fromTop + connection.startOffsetY
+            };
+
+            const startBoardPoint = worldPointToBoard(startWorldPoint.x, startWorldPoint.y);
+
+            finalFromX = startBoardPoint.x;
+            finalFromY = startBoardPoint.y;
+        }
+
+        if (
+            toObject.classList.contains("connection-node") === false &&
+            connection.endOffsetX !== undefined &&
+            connection.endOffsetY !== undefined
+        ) {
+            const toLeft = parseFloat(toObject.style.left) || 0;
+            const toTop = parseFloat(toObject.style.top) || 0;
+
+            const endWorldPoint = {
+                x: toLeft + connection.endOffsetX,
+                y: toTop + connection.endOffsetY
+            };
+
+            const endBoardPoint = worldPointToBoard(endWorldPoint.x, endWorldPoint.y);
+
+            finalToX = endBoardPoint.x;
+            finalToY = endBoardPoint.y;
+        }
+
+        return {
+            fromX: finalFromX,
+            fromY: finalFromY,
+            toX: finalToX,
+            toY: finalToY
+        };
+    }
+
+    function isPointInsideObject(pointX, pointY, objectElement, margin) {
+        const boardRect = board.getBoundingClientRect();
+        const objectRect = objectElement.getBoundingClientRect();
+
+        const left = objectRect.left - boardRect.left - margin;
+        const right = objectRect.right - boardRect.left + margin;
+        const top = objectRect.top - boardRect.top - margin;
+        const bottom = objectRect.bottom - boardRect.top + margin;
+
+        return pointX >= left && pointX <= right && pointY >= top && pointY <= bottom;
+    }
+
+    function getCurveCollisionScore(x1, y1, controlX, controlY, x2, y2, fromId, toId) {
+        let score = 0;
+
+        const pathData = {
+            startX: x1,
+            startY: y1,
+            controlX: controlX,
+            controlY: controlY,
+            endX: x2,
+            endY: y2
+        };
+
+        const objects = document.querySelectorAll(".note, .board-image, .drawing-sheet");
+
+        for (let i = 1; i <= 28; i = i + 1) {
+            const t = i / 29;
+            const point = getQuadraticBezierPoint(pathData, t);
+
+            objects.forEach(function (objectElement) {
+                const objectId = Number(objectElement.dataset.id);
+
+                if (objectId === fromId || objectId === toId) {
+                    return;
+                }
+
+                if (isPointInsideObject(point.x, point.y, objectElement, 18) === true) {
+                    score = score + 1;
+                }
+            });
+        }
+
+        return score;
+    }
+
+    function getAutoCurveControlPoint(x1, y1, x2, y2, connection) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+
+        const distance = Math.hypot(dx, dy);
+
+        if (distance === 0) {
+            return {
+                x: x1,
+                y: y1
+            };
+        }
+
+        const middleX = (x1 + x2) / 2;
+        const middleY = (y1 + y2) / 2;
+
+        const normalX = -dy / distance;
+        const normalY = dx / distance;
+
+        const offset = clamp(distance * 0.28, 60, 190);
+
+        const firstCandidate = {
+            x: middleX + normalX * offset,
+            y: middleY + normalY * offset
+        };
+
+        const secondCandidate = {
+            x: middleX - normalX * offset,
+            y: middleY - normalY * offset
+        };
+
+        const firstScore = getCurveCollisionScore(
+            x1,
+            y1,
+            firstCandidate.x,
+            firstCandidate.y,
+            x2,
+            y2,
+            connection.from,
+            connection.to
+        );
+
+        const secondScore = getCurveCollisionScore(
+            x1,
+            y1,
+            secondCandidate.x,
+            secondCandidate.y,
+            x2,
+            y2,
+            connection.from,
+            connection.to
+        );
+
+        if (secondScore < firstScore) {
+            return secondCandidate;
+        }
+
+        return firstCandidate;
+    }
+
+    function getCurvedPathData(x1, y1, x2, y2, connection) {
+        let controlPoint;
+
+        if (
+            connection.controlX !== undefined &&
+            connection.controlY !== undefined
+        ) {
+            controlPoint = worldPointToBoard(connection.controlX, connection.controlY);
+        } else {
+            controlPoint = getAutoCurveControlPoint(x1, y1, x2, y2, connection);
+        }
+
+        return {
+            d:
+                "M " + x1 + " " + y1 +
+                " Q " + controlPoint.x + " " + controlPoint.y +
+                " " + x2 + " " + y2,
+            startX: x1,
+            startY: y1,
+            controlX: controlPoint.x,
+            controlY: controlPoint.y,
+            endX: x2,
+            endY: y2
+        };
+    }
+
+    function applyConnectionStyle(line, connectionType, connectionColor, markerSuffix) {
+        line.setAttribute("stroke", connectionColor);
+        line.setAttribute("fill", "none");
+        line.setAttribute("stroke-width", "3");
+        line.setAttribute("stroke-linecap", "round");
+        line.setAttribute("stroke-linejoin", "round");
+
+        line.removeAttribute("stroke-dasharray");
+        line.removeAttribute("marker-start");
+        line.removeAttribute("marker-end");
+        line.removeAttribute("opacity");
+
+        let normalizedType = connectionType;
+
+        if (connectionType === "curve") {
+            normalizedType = "line";
+        }
+
+        if (connectionType.startsWith("curve-") === true) {
+            normalizedType = connectionType.replace("curve-", "");
+        }
+
+        const arrowEndUrl = "url(#arrowEnd-" + markerSuffix + ")";
+        const arrowStartUrl = "url(#arrowStart-" + markerSuffix + ")";
+
+        if (normalizedType === "arrow") {
+            line.setAttribute("marker-end", arrowEndUrl);
+        }
+
+        if (normalizedType === "double-arrow") {
+            line.setAttribute("marker-start", arrowStartUrl);
+            line.setAttribute("marker-end", arrowEndUrl);
+        }
+
+        if (normalizedType === "dashed") {
+            line.setAttribute("stroke-dasharray", "10 8");
+        }
+
+        if (normalizedType === "dashed-arrow") {
+            line.setAttribute("stroke-dasharray", "10 8");
+            line.setAttribute("marker-end", arrowEndUrl);
+        }
+
+        if (normalizedType === "dotted") {
+            line.setAttribute("stroke-dasharray", "2 8");
+        }
+
+        if (normalizedType === "thick") {
+            line.setAttribute("stroke-width", "6");
+        }
+
+        if (normalizedType === "thin") {
+            line.setAttribute("stroke-width", "2");
+            line.setAttribute("opacity", "0.55");
+        }
+    }
+
+    function getConnectionPointOnNote(noteRect, targetX, targetY, boardRect) {
+        const centerX = noteRect.left - boardRect.left + noteRect.width / 2;
+        const centerY = noteRect.top - boardRect.top + noteRect.height / 2;
+
+        const dx = targetX - centerX;
+        const dy = targetY - centerY;
+
+        if (dx === 0 && dy === 0) {
+            return {
+                x: centerX,
+                y: centerY
+            };
+        }
+
+        const halfWidth = noteRect.width / 2;
+        const halfHeight = noteRect.height / 2;
+
+        const scaleX = halfWidth / Math.abs(dx);
+        const scaleY = halfHeight / Math.abs(dy);
+
+        const edgeScale = Math.min(scaleX, scaleY);
+
+        const distanceToEdge = Math.hypot(dx * edgeScale, dy * edgeScale);
+
+        const overlap = 1;
+
+        const insideScale = Math.max(
+            0,
+            edgeScale - overlap / distanceToEdge
+        );
+
+        return {
+            x: centerX + dx * insideScale,
+            y: centerY + dy * insideScale
+        };
+    }
+
+    function setConnectionEndpointFromBoardPoint(connectionIndex, endpointName, pointX, pointY) {
+        const connection = connections[connectionIndex];
+
+        if (connection === undefined) {
+            return;
+        }
+
+        const objectId = endpointName === "start"
+            ? connection.from
+            : connection.to;
+
+        const objectElement = getBoardObjectById(objectId);
+
+        if (objectElement === null) {
+            return;
+        }
+
+        const edgeOffset = getEdgeOffsetForObject(objectElement, pointX, pointY);
+
+        if (endpointName === "start") {
+            connection.startOffsetX = edgeOffset.offsetX;
+            connection.startOffsetY = edgeOffset.offsetY;
+        }
+
+        if (endpointName === "end") {
+            connection.endOffsetX = edgeOffset.offsetX;
+            connection.endOffsetY = edgeOffset.offsetY;
+        }
+    }
+
+    function getEdgeOffsetForObject(objectElement, pointX, pointY) {
+        const worldPoint = boardPointToWorld(pointX, pointY);
+
+        const objectLeft = parseFloat(objectElement.style.left) || 0;
+        const objectTop = parseFloat(objectElement.style.top) || 0;
+
+        const objectWidth = objectElement.offsetWidth;
+        const objectHeight = objectElement.offsetHeight;
+
+        const centerX = objectLeft + objectWidth / 2;
+        const centerY = objectTop + objectHeight / 2;
+
+        let dx = worldPoint.x - centerX;
+        let dy = worldPoint.y - centerY;
+
+        if (dx === 0 && dy === 0) {
+            dx = 1;
+        }
+
+        const scaleX = dx === 0
+            ? Infinity
+            : objectWidth / 2 / Math.abs(dx);
+
+        const scaleY = dy === 0
+            ? Infinity
+            : objectHeight / 2 / Math.abs(dy);
+
+        const edgeScale = Math.min(scaleX, scaleY);
+
+        const edgeX = centerX + dx * edgeScale;
+        const edgeY = centerY + dy * edgeScale;
+
+        return {
+            offsetX: edgeX - objectLeft,
+            offsetY: edgeY - objectTop
+        };
+    }
+
+    function resetConnectionEndpoint(connectionIndex, endpointName) {
+        const connection = connections[connectionIndex];
+
+        if (connection === undefined) {
+            return;
+        }
+
+        if (endpointName === "start") {
+            delete connection.startOffsetX;
+            delete connection.startOffsetY;
+        }
+
+        if (endpointName === "end") {
+            delete connection.endOffsetX;
+            delete connection.endOffsetY;
+        }
+    }
+
+    function createConnectionEndpointHandle(x, y, connectionIndex, endpointName, connectionColor) {
+        const endpointHandle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+
+        endpointHandle.setAttribute("cx", x);
+        endpointHandle.setAttribute("cy", y);
+        endpointHandle.setAttribute("r", "3");
+        endpointHandle.setAttribute("data-index", connectionIndex);
+        endpointHandle.setAttribute("data-endpoint", endpointName);
+
+        endpointHandle.classList.add("connection-endpoint-handle");
+
+        endpointHandle.style.fill = connectionColor;
+
+        const handleTitle = document.createElementNS("http://www.w3.org/2000/svg", "title");
+
+        if (endpointName === "start") {
+            handleTitle.textContent = "Потяни, чтобы изменить начало связи. Правая кнопка — вернуть автоначало.";
+        } else {
+            handleTitle.textContent = "Потяни, чтобы изменить конец связи. Правая кнопка — вернуть автоконец.";
+        }
+
+        endpointHandle.appendChild(handleTitle);
+
+        endpointHandle.addEventListener("mousedown", function (event) {
+            if (event.button !== 0) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            rememberHistory();
+
+            draggedConnectionEndpoint = {
+                index: connectionIndex,
+                endpoint: endpointName
+            };
+
+            endpointHandle.classList.add("dragging");
+            document.body.style.cursor = "grabbing";
+        });
+
+        endpointHandle.addEventListener("contextmenu", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            rememberHistory();
+
+            resetConnectionEndpoint(connectionIndex, endpointName);
+
+            drawConnections();
+            saveNotes();
+        });
+
+        return endpointHandle;
+    }
+
+    function getBoardObjectById(objectId) {
+        return document.querySelector(
+            `.note[data-id="${objectId}"], .board-image[data-id="${objectId}"], .drawing-sheet[data-id="${objectId}"], .connection-node[data-id="${objectId}"]`
+        );
+    }
+
+    function drawConnections() {
+        linesLayer.innerHTML = "";
+
+        connections.forEach(function (connection, index) {
+            const screenPoints = getConnectionScreenPoints(connection);
+
+            if (screenPoints === null) {
+                return;
+            }
+
+            const fromX = screenPoints.fromX;
+            const fromY = screenPoints.fromY;
+            const toX = screenPoints.toX;
+            const toY = screenPoints.toY;
+
+            const connectionType = connection.type || "line";
+            const connectionColor = connection.color || "#ff0000";
+            const markerSuffix = index;
+
+            createArrowMarkers(connectionColor, markerSuffix);
+
+            let connectionElement;
+
+            if (isCurvedConnectionType(connectionType) === true) {
+                connectionElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+                const curvedPathData = getCurvedPathData(
+                    fromX,
+                    fromY,
+                    toX,
+                    toY,
+                    connection
+                );
+
+                connectionElement.setAttribute("d", curvedPathData.d);
+
+                applyConnectionStyle(
+                    connectionElement,
+                    connectionType,
+                    connectionColor,
+                    markerSuffix
+                );
+
+                connectionElement.classList.add("connection-line");
+
+                linesLayer.appendChild(connectionElement);
+
+                const middlePoint = getQuadraticBezierPoint(curvedPathData, 0.5);
+
+                const controlHandle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+
+                controlHandle.setAttribute("cx", middlePoint.x);
+                controlHandle.setAttribute("cy", middlePoint.y);
+                controlHandle.setAttribute("r", "7");
+                controlHandle.setAttribute("data-index", index);
+
+                controlHandle.classList.add("curve-control-handle");
+
+                controlHandle.style.fill = connectionColor;
+
+                const handleTitle = document.createElementNS("http://www.w3.org/2000/svg", "title");
+                handleTitle.textContent = "Потяни, чтобы изменить кривую. Правая кнопка — вернуть автообход.";
+
+                controlHandle.appendChild(handleTitle);
+
+                controlHandle.addEventListener("mousedown", function (event) {
+                    if (event.button !== 0) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    rememberHistory();
+
+                    draggedCurveControlIndex = index;
+
+                    controlHandle.classList.add("dragging");
+                    document.body.style.cursor = "grabbing";
+                });
+
+                controlHandle.addEventListener("contextmenu", function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    rememberHistory();
+
+                    delete connections[index].controlX;
+                    delete connections[index].controlY;
+
+                    drawConnections();
+                    saveNotes();
+                });
+
+                linesLayer.appendChild(controlHandle);
+            } else {
+                connectionElement = document.createElementNS("http://www.w3.org/2000/svg", "line");
+
+                connectionElement.setAttribute("x1", fromX);
+                connectionElement.setAttribute("y1", fromY);
+                connectionElement.setAttribute("x2", toX);
+                connectionElement.setAttribute("y2", toY);
+
+                applyConnectionStyle(
+                    connectionElement,
+                    connectionType,
+                    connectionColor,
+                    markerSuffix
+                );
+
+                connectionElement.classList.add("connection-line");
+
+                linesLayer.appendChild(connectionElement);
+            }
+
+            const fromObject = getBoardObjectById(connection.from);
+            const toObject = getBoardObjectById(connection.to);
+
+            if (
+                fromObject !== null &&
+                fromObject.classList.contains("connection-node") === false
+            ) {
+                const startHandle = createConnectionEndpointHandle(
+                    fromX,
+                    fromY,
+                    index,
+                    "start",
+                    connectionColor
+                );
+
+                linesLayer.appendChild(startHandle);
+            }
+
+            if (
+                toObject !== null &&
+                toObject.classList.contains("connection-node") === false
+            ) {
+                const endHandle = createConnectionEndpointHandle(
+                    toX,
+                    toY,
+                    index,
+                    "end",
+                    connectionColor
+                );
+
+                linesLayer.appendChild(endHandle);
+            }
+        });
+    }
+
+    function getDistanceToLine(pointX, pointY, x1, y1, x2, y2) {
+        const lineX = x2 - x1;
+        const lineY = y2 - y1;
+
+        const lineLengthSquared = lineX * lineX + lineY * lineY;
+
+        if (lineLengthSquared === 0) {
+            return Math.hypot(pointX - x1, pointY - y1);
+        }
+
+        let t = ((pointX - x1) * lineX + (pointY - y1) * lineY) / lineLengthSquared;
+
+        t = Math.max(0, Math.min(1, t));
+
+        const closestX = x1 + t * lineX;
+        const closestY = y1 + t * lineY;
+
+        return Math.hypot(pointX - closestX, pointY - closestY);
+    }
+
+    function getDistanceToCurve(pointX, pointY, pathData) {
+        let nearestDistance = Infinity;
+
+        let previousPoint = getQuadraticBezierPoint(pathData, 0);
+
+        for (let i = 1; i <= 40; i = i + 1) {
+            const t = i / 40;
+
+            const currentPoint = getQuadraticBezierPoint(pathData, t);
+
+            const distance = getDistanceToLine(
+                pointX,
+                pointY,
+                previousPoint.x,
+                previousPoint.y,
+                currentPoint.x,
+                currentPoint.y
+            );
+
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+            }
+
+            previousPoint = currentPoint;
+        }
+
+        return nearestDistance;
+    }
+
+    function setCurveControlFromMiddlePoint(connectionIndex, middlePointX, middlePointY) {
+        const connection = connections[connectionIndex];
+
+        if (connection === undefined) {
+            return;
+        }
+
+        const screenPoints = getConnectionScreenPoints(connection);
+
+        if (screenPoints === null) {
+            return;
+        }
+
+        const controlBoardX =
+            2 * middlePointX -
+            0.5 * screenPoints.fromX -
+            0.5 * screenPoints.toX;
+
+        const controlBoardY =
+            2 * middlePointY -
+            0.5 * screenPoints.fromY -
+            0.5 * screenPoints.toY;
+
+        const controlWorldPoint = boardPointToWorld(controlBoardX, controlBoardY);
+
+        connection.controlX = controlWorldPoint.x;
+        connection.controlY = controlWorldPoint.y;
+    }
+
+    function findConnectionIndexNearPoint(mouseX, mouseY) {
+        let nearestConnectionIndex = -1;
+        let nearestDistance = Infinity;
+
+        connections.forEach(function (connection, index) {
+            const screenPoints = getConnectionScreenPoints(connection);
+
+            if (screenPoints === null) {
+                return;
+            }
+
+            const connectionType = connection.type || "line";
+
+            let distance;
+
+            if (isCurvedConnectionType(connectionType) === true) {
+                const pathData = getCurvedPathData(
+                    screenPoints.fromX,
+                    screenPoints.fromY,
+                    screenPoints.toX,
+                    screenPoints.toY,
+                    connection
+                );
+
+                distance = getDistanceToCurve(mouseX, mouseY, pathData);
+            } else {
+                distance = getDistanceToLine(
+                    mouseX,
+                    mouseY,
+                    screenPoints.fromX,
+                    screenPoints.fromY,
+                    screenPoints.toX,
+                    screenPoints.toY
+                );
+            }
+
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestConnectionIndex = index;
+            }
+        });
+
+        if (nearestDistance <= 12) {
+            return nearestConnectionIndex;
+        }
+
+        return -1;
+    }
+
+    function updateWorkspacePosition() {
+        workspace.style.transform = "translate(" + viewX + "px, " + viewY + "px) scale(" + scale + ")";
+        drawConnections();
+        updateTopStatus();
+    }
+
+    function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+    }
+   
+    function getBoardObjectsCount() {
+        return document.querySelectorAll(
+            ".note, .board-image, .drawing-sheet, .connection-node"
+        ).length;
+    }
+
+    function updateTopStatus() {
+        if (boardStatusText === null || zoomLevelText === null) {
+            return;
+        }
+
+        const currentBoard = getCurrentBoard();
+
+        const boardName = currentBoard !== undefined
+            ? currentBoard.name
+            : "Доска";
+
+        const objectsCount = getBoardObjectsCount();
+        const connectionsCount = connections.length;
+        const zoomPercent = Math.round(scale * 100);
+
+        boardStatusText.textContent =
+            boardName +
+            " · " +
+            objectsCount +
+            " объектов · " +
+            connectionsCount +
+            " связей";
+
+        zoomLevelText.textContent = zoomPercent + "%";
+    }
+
+    function zoomAroundBoardCenter(newScale) {
+        const oldScale = scale;
+
+        const boardCenterX = board.clientWidth / 2;
+        const boardCenterY = board.clientHeight / 2;
+
+        const worldX = (boardCenterX - viewX) / oldScale;
+        const worldY = (boardCenterY - viewY) / oldScale;
+
+        scale = clamp(newScale, 0.3, 3);
+
+        viewX = boardCenterX - worldX * scale;
+        viewY = boardCenterY - worldY * scale;
+
+        updateWorkspacePosition();
+        saveNotes();
+    }
+
+    function centerViewOnObjects() {
+        const objects = document.querySelectorAll(
+            ".note, .board-image, .drawing-sheet, .connection-node"
+        );
+
+        if (objects.length === 0) {
+            scale = 1;
+            viewX = 0;
+            viewY = 0;
+
+            updateWorkspacePosition();
+            saveNotes();
+
+            return;
+        }
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        objects.forEach(function (objectElement) {
+            const x = parseFloat(objectElement.style.left) || 0;
+            const y = parseFloat(objectElement.style.top) || 0;
+
+            const width = objectElement.offsetWidth;
+            const height = objectElement.offsetHeight;
+
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x + width);
+            maxY = Math.max(maxY, y + height);
+        });
+
+        const contentWidth = Math.max(1, maxX - minX);
+        const contentHeight = Math.max(1, maxY - minY);
+
+        const contentCenterX = minX + contentWidth / 2;
+        const contentCenterY = minY + contentHeight / 2;
+
+        const padding = 180;
+
+        const fitScale = Math.min(
+            (board.clientWidth - padding) / contentWidth,
+            (board.clientHeight - padding) / contentHeight,
+            1.25
+        );
+
+        scale = clamp(fitScale, 0.3, 1.25);
+
+        viewX = board.clientWidth / 2 - contentCenterX * scale;
+        viewY = board.clientHeight / 2 - contentCenterY * scale;
+
+        updateWorkspacePosition();
+        saveNotes();
+    }
+
+    function showToast(message, type, options) {
+        if (toastContainer === null) {
+            return;
+        }
+
+        const toastOptions = options || {};
+
+        const toast = document.createElement("div");
+        toast.className = "toast";
+
+        if (type !== undefined) {
+            toast.classList.add(type);
+        }
+
+        const messageElement = document.createElement("div");
+        messageElement.className = "toast-message";
+        messageElement.textContent = message;
+
+        toast.appendChild(messageElement);
+
+        let closeTimer;
+
+        function closeToast() {
+            toast.classList.remove("visible");
+
+            setTimeout(function () {
+                toast.remove();
+            }, 220);
+        }
+
+        if (toastOptions.undo === true) {
+            const undoButton = document.createElement("button");
+
+            undoButton.className = "toast-undo-btn";
+            undoButton.textContent = "×";
+            undoButton.title = "Отменить удаление";
+
+            undoButton.addEventListener("click", function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                clearTimeout(closeTimer);
+
+                undoLastAction();
+
+                closeToast();
+
+                showToast("Удаление отменено", "success");
+            });
+
+            toast.appendChild(undoButton);
+        }
+
+        toastContainer.appendChild(toast);
+
+        requestAnimationFrame(function () {
+            toast.classList.add("visible");
+        });
+
+        const toastDuration = toastOptions.duration || 2600;
+
+        closeTimer = setTimeout(function () {
+            closeToast();
+        }, toastDuration);
+    }
+ 
+    function getObjectTypeName(objectElement) {
+        if (objectElement.classList.contains("note") === true) {
+            return "Заметка";
+        }
+
+        if (objectElement.classList.contains("board-image") === true) {
+            return "Картинка";
+        }
+
+        if (objectElement.classList.contains("drawing-sheet") === true) {
+            return "Лист для рисования";
+        }
+
+        if (objectElement.classList.contains("connection-node") === true) {
+            return "Узел связи";
+        }
+
+        return "Объект";
+    }
+
+    function getObjectDeleteMessage(objectElement) {
+        if (objectElement.classList.contains("note") === true) {
+            return "Заметка удалена";
+        }
+
+        if (objectElement.classList.contains("board-image") === true) {
+            return "Картинка удалена";
+        }
+
+        if (objectElement.classList.contains("drawing-sheet") === true) {
+            return "Лист для рисования удалён";
+        }
+
+        if (objectElement.classList.contains("connection-node") === true) {
+            return "Узел связи удалён";
+        }
+
+        return "Объект удалён";
+    }
+
+    function deleteBoardObject(objectElement) {
+        if (objectElement === null) {
+            return;
+        }
+
+        rememberHistory();
+
+        const objectId = Number(objectElement.dataset.id);
+        const objectTypeName = getObjectTypeName(objectElement);
+
+        connections = connections.filter(function (connection) {
+            return connection.from !== objectId && connection.to !== objectId;
+        });
+
+        groups = groups
+            .map(function (group) {
+                group.objectIds = group.objectIds.filter(function (id) {
+                    return id !== objectId;
+                });
+
+                return group;
+            })
+            .filter(function (group) {
+                return group.objectIds.length > 1;
+            });
+
+        groupSelectedObjectIds = groupSelectedObjectIds.filter(function (id) {
+            return id !== objectId;
+        });
+
+        if (activeNoteId === objectId) {
+            activeNoteId = null;
+        }
+
+        objectElement.remove();
+
+        clearSelectedNotes();
+        clearGroupSelection();
+
+        drawConnections();
+        saveNotes();
+
+        showToast(getObjectDeleteMessage(objectElement), "danger", {
+            undo: true,
+            duration: 5000
+        });
+    }
+
+    loadTheme();
+    loadNotes();
+  </script>
+  </body>
+</html>
