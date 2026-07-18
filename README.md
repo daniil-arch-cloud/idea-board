@@ -53,16 +53,4 @@ forge.config.js      # настройки сборки Electron Forge
 
 ## Установка и запуск
 
-Склонировать репозиторий:
-
-```bash
-git clone https://github.com/daniil-arch-cloud/idea-board.git
-cd idea-board
-
-npm install
-
-
-npm start
-
-
-npm run make
+Справа есть кнопка releases, вот в нее переходите скачиваете зип архив, разархивируете его и запускаете исполняемый .exe файл.
