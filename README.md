@@ -38,12 +38,17 @@ Idea Board — локальное desktop-приложение для визуа
 
 idea-board/
 ├── assets/              # иконка и статические ресурсы
+
 ├── index.html           # основной интерфейс приложения
+
 ├── main.js              # Electron main process
+
 ├── package.json         # настройки проекта и npm-команды
+
 ├── package-lock.json    # зафиксированные версии зависимостей
+
 ├── forge.config.js      # настройки сборки Electron Forge
-└── README.md            # описание проекта
+
 
 ## Установка и запуск
 
